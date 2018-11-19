@@ -50,7 +50,7 @@ def Fetch() :
 		return None
 	logging.info('{0} Start'.format(commonObj.GatewayName))
 	print('{0} Start'.format(commonObj.GatewayName))
-
+	stored_CPK = {}			#儲存已計算的CPK
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料
 	FulearnCur.execute(textwrap.dedent('''
@@ -104,51 +104,66 @@ def Fetch() :
 					Retest_Pass = True
 			if Retest_Pass is True:
 				#計算CPK
-				print('===Count CPK===')
-				countCPK = commonObj.MySqlConn.cursor()
-				countCPK.execute(textwrap.dedent('''
-					SELECT * FROM `analog_powered_result` a
-					INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
-					WHERE b.board='73-18275-04' AND a.component = '{0}' AND a.test_condition = '{1}' ORDER BY a.`end_time` ASC
-					'''.format(component,test_condition)))
-				T = []
-				nominal = 0
-				HighAndLow = []
-				total = []
-				for data in countCPK:
-					measured_2 = data[5]
-					nominal_2 = data[8]
-					high_limit_2 = data[9]
-					low_limit_2 = data[10]
-					if (measured_2 >= 0 and measured_2 <= ((high_limit_2+low_limit_2)/2)*50):		#篩選掉明顯有問題的資料
-						if (high_limit_2-low_limit_2) != 0:
-							T.append(high_limit_2-low_limit_2)
-						HighAndLow.append(high_limit_2+low_limit_2)
-						nominal = nominal_2
-						total.append(measured_2)
-				MEAN = np.mean(total)
-				VAR = np.std(total)
-				if nominal is None : 
-					nominal = HighAndLow[0]/2
-				# if T[0] == 0 or T[0] is None :
-				# 	break
-				CA = abs((MEAN - nominal)/(T[0]/2))
-				CP = T[0]/(VAR*6)
-				CPK = (1-CA)*(CP)
-				isDone = True
-				print('CPK = ' + str(CPK) + '\n')
-				CPKK = commonObj.MySqlConn.cursor()
-				CPKK.execute(textwrap.dedent('''
-					UPDATE ICT_Project.analog_powered_result a
-					INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
-					SET a.cpk = '{0}' WHERE b.board='73-18275-04' AND a.component = '{1}' AND a.test_condition = '{2}';
-					'''.format(CPK,component,test_condition)))
-				commonObj.MySqlConn.commit()
-				CPKK.close()
-				if CPK > 0.67 : 
-					label = '探針或測試點接觸問題'
-				else : label = '程式或治具問題'
-				countCPK.close()
+				CPK = 0
+				s = component+'|'+test_condition
+				if s in stored_CPK:
+					CPK = stored_CPK[s]
+					CPKK = commonObj.MySqlConn.cursor()
+					CPKK.execute(textwrap.dedent('''
+						UPDATE ICT_Project.analog_powered_result a
+						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
+						SET a.cpk = '{0}' WHERE b.board='73-18275-04' AND a.component = '{1}' AND a.test_condition = '{2}';
+						'''.format(CPK,component,test_condition)))
+					commonObj.MySqlConn.commit()
+					if CPK > 0.67 : label = '探針或測試點接觸問題(' + str(CPK) + ')' 
+					else : label = '程式不穩定(' + str(CPK) + ')'
+				else:
+					print('===Count CPK===')
+					countCPK = commonObj.MySqlConn.cursor()
+					countCPK.execute(textwrap.dedent('''
+						SELECT * FROM `analog_powered_result` a
+						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
+						WHERE b.board='73-18275-04' AND a.component = '{0}' AND a.test_condition = '{1}' ORDER BY a.`end_time` ASC
+						'''.format(component,test_condition)))
+					T = []
+					nominal = 0
+					HighAndLow = []
+					total = []
+					for data in countCPK:
+						measured_2 = data[5]
+						nominal_2 = data[8]
+						high_limit_2 = data[9]
+						low_limit_2 = data[10]
+						if (measured_2 >= 0 and measured_2 <= ((high_limit_2+low_limit_2)/2)*50):		#篩選掉明顯有問題的資料
+							if (high_limit_2-low_limit_2) != 0:
+								T.append(high_limit_2-low_limit_2)
+							HighAndLow.append(high_limit_2+low_limit_2)
+							nominal = nominal_2
+							total.append(measured_2)
+					MEAN = np.mean(total)
+					VAR = np.std(total)
+					if nominal is None : 
+						nominal = HighAndLow[0]/2
+					# if T[0] == 0 or T[0] is None :
+					# 	break
+					CA = abs((MEAN - nominal)/(T[0]/2))
+					CP = T[0]/(VAR*6)
+					CPK = (1-CA)*(CP)
+					isDone = True
+					stored_CPK[s] = CPK
+					print('CPK = ' + str(CPK) + '\n')
+					CPKK = commonObj.MySqlConn.cursor()
+					CPKK.execute(textwrap.dedent('''
+						UPDATE ICT_Project.analog_powered_result a
+						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
+						SET a.cpk = '{0}' WHERE b.board='73-18275-04' AND a.component = '{1}' AND a.test_condition = '{2}';
+						'''.format(CPK,component,test_condition)))
+					commonObj.MySqlConn.commit()
+					CPKK.close()
+					if CPK > 0.67 : 
+						label = '探針或測試點接觸問題'
+					else : label = '程式或治具問題'
+					countCPK.close()
 			else: 
 				#SFC查找紀錄
 				SFC_result=[]
