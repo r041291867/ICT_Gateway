@@ -57,7 +57,7 @@ def Fetch() :
 		GROUP BY `sn`,`device`,`pins` ORDER BY `end_time` ASC
 		'''))
 	SqlList = []
-	print (FulearnCur.rowcount)
+	# print (FulearnCur.rowcount)
 	for row in FulearnCur :
 		machine = row[0]
 		sn = row[1]
@@ -74,7 +74,7 @@ def Fetch() :
 		isDone = False			#邏輯判斷結束
 		#查找是否重測
 		Retest_Pass = False
-		print ('find re-test ' + sn + ' ' + device)
+		# print ('find re-test ' + sn + ' ' + device)
 		findRetest = commonObj.MySqlConn.cursor()
 		findRetest.execute(textwrap.dedent('''
 			SELECT * FROM `testjet_result`
@@ -95,7 +95,7 @@ def Fetch() :
 				re_time = line[4]
 				if re_status == '00' : 
 					Retest_Pass = True
-			if Retest_Pass is True:		#計算良率
+			if Retest_Pass is True:		#查找上下限
 				findLimit = commonObj.MySqlConn.cursor()
 				findLimit.execute(textwrap.dedent('''
 					SELECT * FROM `testjet_limit`
@@ -162,7 +162,7 @@ def Fetch() :
 					# isNDF_Day += 1 
 				else:
 					#查找是否重測(第二次)
-					print ('re-test again')
+					# print ('re-test again')
 					repair_but_failed = False
 					findRetest_again = commonObj.MySqlConn.cursor()
 					findRetest_again.execute(textwrap.dedent('''
@@ -205,6 +205,8 @@ def Fetch() :
 	logging.info('{0} Finish'.format(commonObj.GatewayName))
 	print('{0} Finish'.format(commonObj.GatewayName))
 	
-	
+aStart = time.time()
 main()
 Fetch()
+aEnd = time.time()
+print ("===== All cost %f sec =====" % (aEnd - aStart))

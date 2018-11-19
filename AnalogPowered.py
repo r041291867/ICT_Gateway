@@ -56,7 +56,7 @@ def Fetch() :
 		GROUP BY `sn`,`component`,`test_condition` ORDER BY `end_time` ASC
 		'''))
 	SqlList = []
-	print (FulearnCur.rowcount)
+	# print (FulearnCur.rowcount)
 	for row in FulearnCur :
 		machine = row[0]
 		sn = row[1]
@@ -76,7 +76,7 @@ def Fetch() :
 		isDone = False			#邏輯判斷結束
 		#查找是否重測
 		Retest_Pass = False
-		print ('find re-test ' + sn + ' ' + component + ' ' + test_condition)
+		# print ('find re-test ' + sn + ' ' + component + ' ' + test_condition)
 		findRetest = commonObj.MySqlConn.cursor()
 		findRetest.execute(textwrap.dedent('''
 			SELECT a.*,b.`board` FROM `analog_powered_result` a
@@ -225,6 +225,8 @@ def Fetch() :
 	logging.info('{0} Finish'.format(commonObj.GatewayName))
 	print('{0} Finish'.format(commonObj.GatewayName))
 	
-	
+aStart = time.time()
 main()
 Fetch()
+aEnd = time.time()
+print ("===== All cost %f sec =====" % (aEnd - aStart))

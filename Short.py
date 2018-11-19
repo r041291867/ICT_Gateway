@@ -57,7 +57,7 @@ def Fetch() :
 		GROUP BY `sn` ORDER BY `end_time` ASC
 		'''))
 	SqlList = []
-	print (FulearnCur.rowcount)
+	# print (FulearnCur.rowcount)
 	for row in FulearnCur :
 		machine = row[0]
 		sn = row[1]
@@ -69,7 +69,7 @@ def Fetch() :
 		isDone = False			#邏輯判斷結束
 		#查找是否重測
 		Retest_Pass = False
-		print ('find re-test ' + sn)
+		# print ('find re-test ' + sn)
 		findRetest = commonObj.MySqlConn.cursor()
 		findRetest.execute(textwrap.dedent('''
 			SELECT a.*,b.board FROM `open_short_result` a
