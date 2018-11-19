@@ -74,7 +74,7 @@ def Fetch() :
 		isDone = False			#邏輯判斷結束
 		#查找是否重測
 		Retest_Pass = False
-		# print ('find re-test ' + sn + ' ' + device)
+		print ('find re-test ' + sn + ' ' + device)
 		findRetest = commonObj.MySqlConn.cursor()
 		findRetest.execute(textwrap.dedent('''
 			SELECT * FROM `testjet_result`
