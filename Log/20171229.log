@@ -1,0 +1,32 @@
+2017/12/29 08:50:41 AM FetchClassCourse happen MySql Connection Fail
+2017/12/29 08:50:41 AM (1049, "Unknown database 'fulearn_4'")
+2017/12/29 08:52:16 AM FetchClassCourse Start
+2017/12/29 09:41:41 AM FetchClassCourse Start
+2017/12/29 09:58:42 AM FetchClassCourse Start
+2017/12/29 10:01:10 AM FetchCourse Start
+2017/12/29 10:20:28 AM FetchCourse Start
+2017/12/29 10:48:36 AM FetchCourse happen MySql Connection Fail
+2017/12/29 10:48:36 AM (1049, "Unknown database 'fulearn_4'")
+2017/12/29 10:50:34 AM FetchCourse Start
+2017/12/29 11:44:36 AM FetchCourse Start
+2017/12/29 02:11:39 PM FetchClassCourse Start
+2017/12/29 02:15:14 PM FetchCourse Start
+2017/12/29 02:27:15 PM FetchClassCourse Start
+2017/12/29 02:57:20 PM FetchClassCourse Start
+2017/12/29 02:58:55 PM FetchClassCourse Start
+2017/12/29 03:01:39 PM FetchClassCourse Start
+2017/12/29 03:01:47 PM FetchClassCourse Finish
+2017/12/29 03:12:48 PM FetchCourse Start
+2017/12/29 03:19:51 PM FetchCourse Start
+2017/12/29 03:24:30 PM FetchExam Start
+2017/12/29 03:46:54 PM FetchClassCourse Start
+2017/12/29 04:19:44 PM FetchCourse Start
+2017/12/29 04:21:23 PM FetchClassCourse Start
+2017/12/29 04:44:16 PM FetchClassCourse Start
+2017/12/29 04:44:23 PM FetchClassCourse Finish
+2017/12/29 04:47:23 PM FetchCourse Start
+2017/12/29 05:10:18 PM FetchExam Start
+2017/12/29 05:10:56 PM FetchExamOption Start
+2017/12/29 05:16:55 PM FetchExamOption Start
+2017/12/29 05:18:49 PM FetchExamOption Start
+2017/12/29 05:19:00 PM FetchExamOption Finish
