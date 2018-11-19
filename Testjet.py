@@ -122,9 +122,9 @@ def Fetch() :
 					totalTime = countTotal.rowcount
 					liang_lu = failTime/totalTime
 					if liang_lu <= 0.05:
-						label = '感應面板或探針問題'
+						label = '感應面板或探針問題 (' + str(1-liang_lu) + ')'
 					else:
-						label = '程式問題'
+						label = '程式問題 (' + str(1-liang_lu) + ')'
 			else: 
 				# countRepairDay = 1		#計算天數 超過7天則直接跳出
 				#SFC查找紀錄

@@ -163,6 +163,8 @@ def Fetch() :
 					CPK = 0
 					if component in stored_CPK:
 						CPK = stored_CPK[component]
+						if CPK > 0.67 : label = '探針或測試點接觸問題(' + str(CPK) + ')' 
+						else : label = '程式不穩定(' + str(CPK) + ')'
 					else:
 						print('===Count CPK===')
 						# t1 = time.time()

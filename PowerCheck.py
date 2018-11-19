@@ -108,6 +108,8 @@ def Fetch() :
 				CPK = 0
 				if power_check in stored_CPK:
 					CPK = stored_CPK[power_check]
+					if CPK > 0.67 : label = '探針或測試點接觸問題' 
+					else : label = '程式不穩定'
 				else:
 					print('===Count CPK===')
 					# t1 = time.time()
