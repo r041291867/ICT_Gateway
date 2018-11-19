@@ -106,9 +106,9 @@ def Fetch() :
 				for limit in findLimit:
 					l_limit = Decimal(limit[3])
 					h_limit = Decimal(limit[4])
-				if measured > h_limit:
+				if measured >= h_limit:
 					label = '程式問題'
-				elif measured < l_limit:		#測試步驟良率
+				elif measured <= l_limit:		#測試步驟良率
 					#計算失敗次數
 					countFail = commonObj.MySqlConn.cursor()
 					countFail.execute(textwrap.dedent('''
