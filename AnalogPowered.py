@@ -12,7 +12,10 @@ import re
 import textwrap
 import requests
 import time
+import numpy as np 
+from decimal import * 
 
+getcontext().prec = 15
 
 class common() :
 	MySqlConn = None
@@ -95,7 +98,7 @@ def Fetch() :
 				#查找重測是否成功
 				re_sn = line[1]
 				re_test_condition = line[6]
-				re_status = line[3]    #block_status
+				re_status = line[2]    #block_status
 				re_time = line[11]
 				if re_status == '00' : 
 					Retest_Pass = True
@@ -104,9 +107,9 @@ def Fetch() :
 				print('===Count CPK===')
 				countCPK = commonObj.MySqlConn.cursor()
 				countCPK.execute(textwrap.dedent('''
-					SELECT * FROM `analog_powered_result`
+					SELECT * FROM `analog_powered_result` a
 					INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
-					WHERE b.board='73-18275-04' AND component = '{0}' AND test_condition = '{1}' ORDER BY `end_time` ASC
+					WHERE b.board='73-18275-04' AND a.component = '{0}' AND a.test_condition = '{1}' ORDER BY a.`end_time` ASC
 					'''.format(component,test_condition)))
 				T = []
 				nominal = 0
@@ -136,12 +139,13 @@ def Fetch() :
 				print('CPK = ' + str(CPK) + '\n')
 				CPKK = commonObj.MySqlConn.cursor()
 				CPKK.execute(textwrap.dedent('''
-					UPDATE ICT_Project.analog_powered_result SET cpk = '{0}' WHERE component = '{1}' AND test_condition = '{2}';
+					UPDATE ICT_Project.analog_powered_result a
+					INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
+					SET a.cpk = '{0}' WHERE b.board='73-18275-04' AND a.component = '{1}' AND a.test_condition = '{2}';
 					'''.format(CPK,component,test_condition)))
 				commonObj.MySqlConn.commit()
 				CPKK.close()
 				if CPK > 0.67 : 
-					stored_sn.append(sn)
 					label = '探針或測試點接觸問題'
 				else : label = '程式或治具問題'
 				countCPK.close()
@@ -158,7 +162,7 @@ def Fetch() :
 					startTime = str(end_time - delta1)[:10]
 					endTime = str(end_time + delta7)[:10]
 					BU = 'UAG'
-					print('http://10.157.20.101:8082/Api/repair?startTime='+startTime+'&endTime='+endTime+'&BU='+BU)
+					# print('http://10.157.20.101:8082/Api/repair?startTime='+startTime+'&endTime='+endTime+'&BU='+BU)
 					r = requests.get('http://10.157.20.101:8082/Api/repair?startTime='+startTime+'&endTime='+endTime+'&BU='+BU)
 					SFC_result = r.json() 
 				except Exception as err:
@@ -195,7 +199,7 @@ def Fetch() :
 						# print('find RetestAgain Failed')
 					else:
 						for line_again in findRetest_again :
-							if line_again[3] == '00' : 
+							if line_again[2] == '00' : 
 								Retest_Pass = True
 						if Retest_Pass is True :
 							label = '零件或製程問題'
