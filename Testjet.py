@@ -49,7 +49,7 @@ def Fetch() :
 		return None
 	logging.info('{0} Start'.format(commonObj.GatewayName))
 	print('{0} Start'.format(commonObj.GatewayName))
-
+	stored_LL = {}			#儲存已計算的良率
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料
 	FulearnCur.execute(textwrap.dedent('''
@@ -110,21 +110,29 @@ def Fetch() :
 					label = '程式問題'
 				elif measured <= l_limit:		#測試步驟良率
 					#計算失敗次數
-					countFail = commonObj.MySqlConn.cursor()
-					countFail.execute(textwrap.dedent('''
-						SELECT * FROM `testjet_result` where board = '73-18275-04' and device = 'u84' and status != '00' group by sn,device
-						'''.format(device)))
-					failTime = countFail.rowcount
-					countTotal = commonObj.MySqlConn.cursor()
-					countTotal.execute(textwrap.dedent('''
-						SELECT * FROM `testjet_result` where board = '73-18275-04' and device = 'u84' group by sn,device
-						'''.format(device)))
-					totalTime = countTotal.rowcount
-					liang_lu = failTime/totalTime
-					if liang_lu <= 0.05:
-						label = '感應面板或探針問題 (' + str(1-liang_lu) + ')'
+					if device in stored_LL:
+						liang_lu = stored_LL[device]
+						if liang_lu <= 0.05:
+							label = '感應面板或探針問題 (' + str(1-liang_lu) + ')'
+						else:
+							label = '程式問題 (' + str(1-liang_lu) + ')'
 					else:
-						label = '程式問題 (' + str(1-liang_lu) + ')'
+						countFail = commonObj.MySqlConn.cursor()
+						countFail.execute(textwrap.dedent('''
+							SELECT * FROM `testjet_result` where board = '73-18275-04' and device = '{0}' and status = '01' group by sn,device
+							'''.format(device)))
+						failTime = countFail.rowcount
+						countTotal = commonObj.MySqlConn.cursor()
+						countTotal.execute(textwrap.dedent('''
+							SELECT * FROM `testjet_result` where board = '73-18275-04' and device = '{0}' group by sn,device
+							'''.format(device)))
+						totalTime = countTotal.rowcount
+						liang_lu = failTime/totalTime
+						stored_LL[device] = liang_lu
+						if liang_lu <= 0.05:
+							label = '感應面板或探針問題 (' + str(1-liang_lu) + ')'
+						else:
+							label = '程式問題 (' + str(1-liang_lu) + ')'
 			else: 
 				# countRepairDay = 1		#計算天數 超過7天則直接跳出
 				#SFC查找紀錄
