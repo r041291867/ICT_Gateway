@@ -57,11 +57,11 @@ def Fetch() :
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料
 	FulearnCur.execute(textwrap.dedent('''
-		SELECT * FROM `analog_result_18275`
-		WHERE status != 0 GROUP BY `sn`,`component`,`test_type` ORDER BY `end_time` ASC, `seq` ASC
+		SELECT `machine`,`sn`,`block_status`,`component`,`test_type`,`status`,`end_time`,`seq` FROM `analog_result_18275`
+		WHERE status = 1 GROUP BY `sn`,`component`,`test_type` ORDER BY `end_time` ASC, `seq` ASC
 		'''))
 	SqlList = []
-	print (FulearnCur.rowcount)
+	# print (FulearnCur.rowcount)
 	for row in FulearnCur :
 		machine = row[0]
 		sn = row[1]
@@ -69,28 +69,28 @@ def Fetch() :
 		component = row[3]
 		test_type = row[4]
 		status = row[5]	
-		measured = row[6]
-		test_condition = row[7]
-		limit_type = row[8]
-		nominal = row[9]
-		high_limit = row[10]
-		low_limit = row[11]
-		end_time = row[12]
-		seq = row[13]
+		# measured = row[6]
+		# test_condition = row[7]
+		# limit_type = row[8]
+		# nominal = row[9]
+		# high_limit = row[10]
+		# low_limit = row[11]
+		end_time = row[6]
+		seq = row[7]
 		sfc_repair = 0
 		label = 'NULL'
 		isDone = False			#邏輯判斷結束
 		#查找是否重測
 		Retest_Pass = False
 		print ('find re-test ' + sn + ' ' + component)
-		# zstart = time.time()
+		zstart = time.time()
 		findRetest = commonObj.MySqlConn.cursor()
 		findRetest.execute(textwrap.dedent('''
 			SELECT * FROM `analog_result_18275` WHERE `sn` = '{0}' AND `component` = '{1}' AND end_time = '{2}' AND seq > '{3}' AND test_type = '{4}' 
-			ORDER BY `end_time` ASC, `seq` ASC
+			ORDER BY `seq` ASC
 			'''.format(sn,component,end_time,seq,test_type)))
-		# zend = time.time()
-		# print('======retest use %f sec =====' % (zend - zstart))
+		zend = time.time()
+		print('======retest use %f sec =====' % (zend - zstart))
 		isDone = False		#邏輯判斷結束
 		re_sn = ''
 		re_time = ''
@@ -224,7 +224,7 @@ def Fetch() :
 					r = requests.get('http://10.157.20.101:8082/Api/repair?startTime='+startTime+'&endTime='+endTime+'&BU='+BU)
 					SFC_result = r.json() 
 				except Exception as err:
-					print('!!!!'+str(err)+'!!!!')
+					print('!!!!'+str(err)+'!!!!') 
 				try:
 					for repair_info in SFC_result['data'] :
 						if repair_info[',repair:']['Sysserailno'] == sn :
@@ -254,7 +254,7 @@ def Fetch() :
 						isDone = True
 					else:
 						for line_again in findRetest_again :
-							if line_again[3] == '00' : 
+							if line_again[2] == '00' : 
 								Retest_Pass = True
 						if Retest_Pass is True :
 							stored_sn.append(sn)
