@@ -176,7 +176,7 @@ def Fetch() :
 						# print('find RetestAgain Failed')
 					else:
 						for line_again in findRetest_again :
-							if line_again[3] == '00' : 
+							if line_again[2] == '00' : 
 								Retest_Pass = True
 						if Retest_Pass is True :
 							label = '零件或製程問題'
