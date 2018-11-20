@@ -296,7 +296,7 @@ def Fetch() :
 			nominal2 = data[9]
 			high_limit2 = data[10]
 			low_limit2 = data[11]
-			if sn2 in stored_sn:
+			if sn2 not in stored_sn:
 				if (measured2 >= 0 and measured2 <= ((high_limit2+low_limit2)/2)*5):		#篩選掉明顯有問題的資料
 					if (high_limit2-low_limit2) != 0:
 						T.append(high_limit2-low_limit2)
