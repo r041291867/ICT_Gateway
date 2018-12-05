@@ -111,7 +111,7 @@ def Fetch() :
 				#找出該零件的針點
 				WireList = commonObj.MySqlConn.cursor()
 				WireList.execute(textwrap.dedent('''
-					SELECT * FROM `wirelist` WHERE `board` = '73-18275-04' AND `component` = '{0}'
+					SELECT * FROM `wirelist` WHERE `board` = '73-18275-04' AND `component` = '{0}' and test_type = 'analog'
 					'''.format(re_component)))
 				sharedBRC = []			#儲存針點的零件以便查詢共用針點的sn
 				#找出針點共用零件
@@ -120,7 +120,7 @@ def Fetch() :
 					wire_BRC = wire[5]
 					ShareBRC = commonObj.MySqlConn.cursor()
 					ShareBRC.execute(textwrap.dedent('''
-						SELECT * FROM `wirelist` WHERE `board` = '73-18275-04' AND `BRC` = '{0}' AND component != '{1}'
+						SELECT * FROM `wirelist` WHERE `board` = '73-18275-04' AND `BRC` = '{0}' AND component != '{1}' and test_type = 'analog'
 						'''.format(wire_BRC,wire_component)))
 					if ShareBRC.rowcount == 0 : 
 						#找不到共用針點則直接挑出
@@ -163,7 +163,9 @@ def Fetch() :
 					CPK = 0
 					if component in stored_CPK:
 						CPK = stored_CPK[component]
-						if CPK > 0.67 : label = '探針或測試點接觸問題(' + str(CPK) + ')' 
+						if CPK > 0.67 : 
+							stored_sn.append(sn)
+							label = '探針或測試點接觸問題(' + str(CPK) + ')' 
 						else : label = '程式不穩定(' + str(CPK) + ')'
 					else:
 						print('===Count CPK===')
@@ -181,7 +183,7 @@ def Fetch() :
 						HighAndLow = []
 						total = []
 						for data in countCPK:
-							if (data[6] >= 0 and data[6] <= ((data[10]+data[11])/2)*50):		#篩選掉明顯有問題的資料
+							if (data[6] >= 0 and data[6] <= ((data[10]+data[11])/2)*5):		#篩選掉明顯有問題的資料
 								if (data[10]-data[11]) != 0:
 									T.append(data[10]-data[11])
 								HighAndLow.append(data[10]+data[11])
@@ -204,7 +206,18 @@ def Fetch() :
 						if CPK > 0.67 : 
 							stored_sn.append(sn)
 							label = '探針或測試點接觸問題(' + str(CPK) + ')' 
-						else : label = '程式不穩定(' + str(CPK) + ')'
+						else : 
+							#CPK小於0.67則再用上下限做中心值再算一次
+							nominal = HighAndLow[0]/2
+							CA = abs((MEAN - nominal)/(T[0]/2))
+							CP = T[0]/(VAR*6)
+							CPK = (1-CA)*(CP)
+							stored_CPK[component] = CPK
+							if CPK > 0.67 : 
+								stored_sn.append(sn)
+								label = '探針或測試點接觸問題(' + str(CPK) + ')' 
+							else:
+								label = '程式不穩定(' + str(CPK) + ')'
 						countCPK.close()
 				WireList.close()
 			else: 
@@ -264,22 +277,24 @@ def Fetch() :
 		findRetest.close()
 		#寫入資料表
 		SqlList.append(textwrap.dedent('''
-			UPDATE ICT_Project.analog_result SET sfc_repair = '{0}',label = '{1}' WHERE seq = '{2}';
-			'''.format(sfc_repair,label,seq)))
-		Cur = commonObj.MySqlConn.cursor()
-		Cur.execute(textwrap.dedent('''
-			UPDATE ICT_Project.analog_result_18275 SET sfc_repair = '{0}',label = '{1}' WHERE sn = '{2}' AND component = '{3}' AND test_type = '{4}';
+			UPDATE analog_result_18275 SET sfc_repair = '{0}',label = '{1}' WHERE sn = '{2}' AND component = '{3}' AND test_type = '{4}';
 			'''.format(sfc_repair,label,sn,component,test_type)))
-		commonObj.MySqlConn.commit()
-		Cur.close()
+		# Cur = commonObj.MySqlConn.cursor()
+		# Cur.execute(textwrap.dedent('''
+		# 	UPDATE analog_result_18275 SET sfc_repair = '{0}',label = '{1}' WHERE sn = '{2}' AND component = '{3}' AND test_type = '{4}';
+		# 	'''.format(sfc_repair,label,sn,component,test_type)))
+		# commonObj.MySqlConn.commit()
+		# Cur.close()
 	with open('./Output.sql' ,'wb') as f:
 		f.write(bytearray(''.join(SqlList),"utf-8"))
 		f.close()
 	stored_sn_new = list(set(stored_sn))
 	stored_component_new = list(set(stored_component))
+	stored_CPK_II = {}
+	print('===Count CPK Twice===')
 	for CPK_twice in stored_component_new:
 		#計算第二次CPK
-		print('===Count CPK Twice===')
+		CPK = 0
 		countCPK = commonObj.MySqlConn.cursor()
 		sp = CPK_twice.split('|')
 		countCPK.execute(textwrap.dedent('''
@@ -313,22 +328,25 @@ def Fetch() :
 		CP = T[0]/(VAR*6)
 		CPK = (1-CA)*(CP)
 		isDone = True
-		print('CPK = ' + str(CPK) + '\n')
-		Cur = commonObj.MySqlConn.cursor()
-		Cur.execute(textwrap.dedent('''
-			UPDATE ICT_Project.analog_result_18275 SET cpk = '{0}' WHERE component = '{1}' AND test_type = '{2}';
+		# print('CPK = ' + str(CPK) + '\n')
+		SqlList.append(textwrap.dedent('''
+			UPDATE analog_result_18275 SET cpk = '{0}' WHERE component = '{1}' AND test_type = '{2}';
 			'''.format(CPK,sp[0],sp[1])))
-		commonObj.MySqlConn.commit()
-		Cur.close()
+		# Cur = commonObj.MySqlConn.cursor()
+		# Cur.execute(textwrap.dedent('''
+		# 	UPDATE ICT_Project_V2.analog_result_18275 SET cpk = '{0}' WHERE component = '{1}' AND test_type = '{2}';
+		# 	'''.format(CPK,sp[0],sp[1])))
+		# commonObj.MySqlConn.commit()
+		# Cur.close()
 		countCPK.close()
 	FulearnCur.close()
 	
-	# Cur = commonObj.MySqlConn.cursor()
+	Cur = commonObj.MySqlConn.cursor()
 
-	# for update in SqlList:
-	# 	Cur.execute(update)
-	# 	commonObj.MySqlConn.commit()
-	# Cur.close()
+	for update in SqlList:
+		Cur.execute(update)
+		commonObj.MySqlConn.commit()
+	Cur.close()
 	aEnd = time.time()#計時結束
 	print ("===== All cost %f sec =====" % (aEnd - aStart))
 	commonObj.MySqlConn.close()
