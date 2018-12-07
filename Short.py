@@ -154,7 +154,7 @@ def Fetch() :
 		findRetest.close()
 
 		SqlList.append(textwrap.dedent('''
-			UPDATE ICT_Project.open_short_fail AS a
+			UPDATE open_short_fail AS a
 			INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
 			SET sfc_repair = '{0}',label = '{1}' WHERE b.board='73-18275-04' AND a.sn = '{2}' AND fail_type = 'Short';
 			'''.format(sfc_repair,label,sn)))

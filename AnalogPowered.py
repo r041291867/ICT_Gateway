@@ -154,7 +154,7 @@ def Fetch() :
 					print('CPK = ' + str(CPK) + '\n')
 					CPKK = commonObj.MySqlConn.cursor()
 					CPKK.execute(textwrap.dedent('''
-						UPDATE ICT_Project.analog_powered_result a
+						UPDATE analog_powered_result a
 						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
 						SET a.cpk = '{0}' WHERE b.board='73-18275-04' AND a.component = '{1}' AND a.test_condition = '{2}';
 						'''.format(CPK,component,test_condition)))
@@ -223,7 +223,7 @@ def Fetch() :
 		findRetest.close()
 
 		SqlList.append(textwrap.dedent('''
-			UPDATE ICT_Project.analog_powered_result AS a 
+			UPDATE analog_powered_result AS a 
 			INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
 			SET a.sfc_repair = '{0}',a.label = '{1}' WHERE b.board='73-18275-04' AND a.sn = '{2}' AND a.component = '{3}' AND a.test_condition = '{4}'
 			'''.format(sfc_repair,label,sn,component,test_condition)))

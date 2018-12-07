@@ -212,13 +212,13 @@ def Fetch() :
 
 		if CPK == 0 :
 			SqlList.append(textwrap.dedent('''
-				UPDATE ICT_Project.power_on_result AS a 
+				UPDATE power_on_result AS a 
 				INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
 				SET a.sfc_repair = '{0}',a.label = '{1}',a.cpk = null WHERE b.board='73-18275-04' AND a.sn = '{2}'  AND a.power_check_type = '{3}';
 				'''.format(sfc_repair,label,sn,power_check_type)))
 		else:
 			SqlList.append(textwrap.dedent('''
-				UPDATE ICT_Project.power_on_result AS a 
+				UPDATE power_on_result AS a 
 				INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
 				SET a.sfc_repair = '{0}',a.label = '{1}',a.cpk = '{2}' WHERE b.board='73-18275-04' AND a.sn = '{3}'  AND a.power_check_type = '{4}';
 				'''.format(sfc_repair,label,CPK,sn,power_check_type)))

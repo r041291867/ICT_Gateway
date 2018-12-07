@@ -193,7 +193,7 @@ def Fetch() :
 		findRetest.close()
 
 		SqlList.append(textwrap.dedent('''
-			UPDATE ICT_Project.`testjet_fail` SET sfc_repair = '{0}',label = '{1}' 
+			UPDATE `testjet_fail` SET sfc_repair = '{0}',label = '{1}' 
 			WHERE board='73-18275-04' AND sn = '{2}'  AND device = '{3}';
 			'''.format(sfc_repair,label,sn,device)))
 	with open('./Output.sql' ,'wb') as f:

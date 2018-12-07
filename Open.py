@@ -102,43 +102,68 @@ def Fetch() :
 					ORDER BY `end_time`,`seq` ASC
 					'''.format(re_sn)))
 				sharedBRC = []			#儲存針點的零件以便查詢共用針點的sn
+				storedFromEnd = []		#儲存失敗的針點位置
 				#找出該針點是否有其他fail
 				for wire in WireList :
 					wire_sn = wire[1]
 					wire_from = wire[6]
 					wire_end = wire[9]
 					wire_seq = wire[12]
-					ShareBRC = commonObj.MySqlConn.cursor()
-					ShareBRC.execute(textwrap.dedent('''
+					storedFromEnd.append(wire_from + '|' + wire_end)
+					#找From針點是否有其他fail
+					findFromFail = commonObj.MySqlConn.cursor()
+					findFromFail.execute(textwrap.dedent('''
 						SELECT a.*,b.board FROM `open_short_fail` a
 						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time
-						WHERE b.board='73-18275-04' AND (a.from_point = '{0}' OR a.end_point = '{0}') AND a.fail_type = 'Open'
+						WHERE b.board='73-18275-04' AND a.from_point = '{0}' AND a.fail_type = 'Open'
 						'''.format(wire_from)))
-					if ShareBRC.rowcount == 0 : 
-						#該針點沒有其他失敗紀錄
-						no_ShareBRC = True
-					else:
+					#找End針點是否有其他fail
+					findEndFail = commonObj.MySqlConn.cursor()
+					findEndFail.execute(textwrap.dedent('''
+						SELECT a.*,b.board FROM `open_short_fail` a
+						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time
+						WHERE b.board='73-18275-04' AND a.end_point = '{0}' AND a.fail_type = 'Open'
+						'''.format(wire_end)))
+					#From跟End都有fail
+					if findFromFail.rowcount != 0 and findEndFail.rowcount != 0 : 
 						no_ShareBRC = False
 						label = '探針或測試點接觸問題'
+						findEndFail.close()
+						findFromFail.close()
 						break
+					else:
+						#該針點沒有其他失敗紀錄
+						findEndFail.close()
+						findFromFail.close()
+						no_ShareBRC = True
 				if no_ShareBRC is True:
-					#測試失敗良率
-					CountTotal = commonObj.MySqlConn.cursor()
-					#抓取fail資料
-					CountTotal.execute(textwrap.dedent('''
-						SELECT a.*,b.`board` FROM `open_short_result` a 
-						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
-						WHERE b.board='73-18275-04' AND a.sn = '{0}' ORDER BY `end_time` ASC
-						'''.format(sn)))
-					#計算失敗次數
-					CountFail = commonObj.MySqlConn.cursor()
-					#抓取fail資料
-					CountFail.execute(textwrap.dedent('''
-						SELECT a.*,b.`board` FROM `open_short_result` a 
-						INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time AND a.status != '0'
-						WHERE b.board='73-18275-04' AND a.sn = '{0}' ORDER BY `end_time` ASC
-						'''.format(sn)))
-
+					for FromEnd in storedFromEnd:
+						fe = storedFromEnd.split("|")
+						#測試失敗良率
+						CountTotal = commonObj.MySqlConn.cursor()
+						#抓取fail資料
+						CountTotal.execute(textwrap.dedent('''
+							SELECT a.*, b.`board`  FROM `open_short_result` a INNER JOIN ict_result b ON a.machine = b.machine 
+							AND a.sn = b.sn AND a.end_time = b.end_time WHERE b.board = '73-18275-04' GROUP BY `sn` 
+							GROUP BY `sn` 
+							'''))
+						#計算失敗次數
+						CountFail = commonObj.MySqlConn.cursor()
+						#抓取fail資料
+						CountFail.execute(textwrap.dedent('''
+							SELECT a.*,b.board FROM `open_short_fail` a
+							INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time
+							WHERE b.board='73-18275-04' AND a.from_point = '{0}' AND a.end_point = '{1}'
+							'''.format(fe[0],fe[1])))
+						liang_lu = 1 - CountFail.rowcount/CountTotal.rowcount
+						if liang_lu > 0.95:
+							label = '探針或測試點接觸問題'
+							CountTotal.close()
+							CountFail.close()
+						else :
+							label = '程式問題'
+							CountTotal.close()
+							CountFail.close()
 				WireList.close()
 			else: 
 				# countRepairDay = 1		#計算天數 超過7天則直接跳出
@@ -200,7 +225,7 @@ def Fetch() :
 		findRetest.close()
 
 		SqlList.append(textwrap.dedent('''
-			UPDATE ICT_Project.open_short_fail AS a
+			UPDATE open_short_fail AS a
 			INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
 			SET sfc_repair = '{0}',label = '{1}'  WHERE b.board='73-18275-04' AND a.sn = '{2}' AND fail_type = 'Open';
 			'''.format(sfc_repair,label,sn)))
