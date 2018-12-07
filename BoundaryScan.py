@@ -119,8 +119,7 @@ def Fetch() :
 						'''.format(component)))
 					liang_lu = 1 - (countFail.rowcount/countTotal.rowcount)
 					print('良率：' + str(liang_lu))
-					if liang_lu > 0.99
-					:			
+					if liang_lu > 0.99:			
 						label = '探針或測試點接觸問題' + '(' + str(liang_lu) + ')'
 					else:
 						label = '程式問題' + '(' + str(liang_lu) + ')'
