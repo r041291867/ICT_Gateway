@@ -3,3 +3,7 @@ Output.sql
 sftp-config.json
 Analog_*
 Short_*
+PowerCheck_*
+BoundaryScan_*
+Open_*
+AnalogPowered_*
