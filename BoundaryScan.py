@@ -143,7 +143,7 @@ def Fetch() :
 					r = requests.get('http://10.157.20.101:8082/Api/repair?startTime='+startTime+'&endTime='+endTime+'&BU='+BU)
 					SFC_result = r.json() 
 				except Exception as err:
-					print('!!!!'+str(err)+'!!!!')
+					print('!!-!'+str(err)+'!-!!')
 				try:
 					for repair_info in SFC_result['data'] :
 						if repair_info[',repair:']['Sysserailno'] == sn :

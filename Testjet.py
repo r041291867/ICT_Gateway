@@ -32,10 +32,10 @@ def main() :
 		, format='%(asctime)s %(message)s'
 		, datefmt='%Y/%m/%d %I:%M:%S %p')
 	try :
-		commonObj.MySqlConn = pymysql.connect(host=config.get('MySQL','mysqlserver')
-			,user=config.get('MySQL','mysqluser')
-			,passwd=config.get('MySQL','mysqlpassword')
-			,db=config.get('MySQL','database')
+		commonObj.MySqlConn = pymysql.connect(host=config.get('ICT','mysqlserver')
+			,user=config.get('ICT','mysqluser')
+			,passwd=config.get('ICT','mysqlpassword')
+			,db=config.get('ICT','database')
 			,charset='utf8')
 	except Exception as inst:
 		print('MySql Connection Fail')
@@ -67,8 +67,10 @@ def Fetch() :
 		board = row[5]
 		fall_no = row[6]
 		pins = row[7]
-		measured = row[8]
-		seq = row[9]
+		node = row[8]		#fg新欄位
+		measured = row[9]
+		BRC = [10]			#fg新欄位
+		seq = row[11]
 		sfc_repair = 0
 		label = 'NULL'
 		isDone = False			#邏輯判斷結束
