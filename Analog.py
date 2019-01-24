@@ -66,7 +66,7 @@ ErrCode = {
 Env = {}
 Env['ICT'] = ['ICT','analog_result_18275','73-18275-04','label_18275']
 Env['ICT4'] = ['ICT','analog_result_18274','73-18274-04','label_18274']
-Env['ICTs'] = ['ICT','analog_18275_1215','73-18275-04','label_18275']
+Env['ICTs'] = ['ICT','analog_18275_1215','73-18275-04','label_18275_1215']
 Env['ICT_Exp'] = ['ICT_exp','analog_result','73-18275-04','label_18275']
 TestDB = ''
 TestTB = ''
@@ -112,24 +112,18 @@ def Fetch() :
 	logging.info('{0} Start'.format(commonObj.GatewayName))
 	print('{0} Start'.format(commonObj.GatewayName))
 	print(TestDB+' '+TestTB+' '+TestBoard)
-	#程式執行前先清空舊資料
-	truncate = commonObj.MySqlConn.cursor()
-	truncate.execute(textwrap.dedent('''
-		TRUNCATE TABLE {0}
-		'''.format(LabelTB)))
-	truncate.close()
 	stored_sn = []			#儲存有問題的sn
 	stored_component = []	#儲存已計算的零件
 	stored_CPK = {}			#儲存已計算的CPK
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料(測試步驟Fail)
 	FulearnCur.execute(textwrap.dedent('''
-		SELECT `machine`,`sn`,`block_status`,`component`,`test_type`,`status`,`end_time`,`seq` FROM {0}
-		WHERE status = 1 GROUP BY `sn`,`component`,`test_type`,end_time ORDER BY `end_time` ASC, `seq` ASC
+		SELECT `machine`,`sn`,`block_status`,`component`,`test_type`,`status`,test_condition,`end_time`,`seq` FROM {0}
+		WHERE status = 1 GROUP BY `sn`,`component`,`test_type`,test_condition ORDER BY `end_time` ASC, `seq` ASC
 		'''.format(TestTB)))
 	SqlList = []
 	debug = []
-	# print (FulearnCur.rowcount)
+	print (FulearnCur.rowcount)
 	for row in FulearnCur :
 		machine = row[0]
 		sn = row[1]
@@ -138,26 +132,26 @@ def Fetch() :
 		test_type = row[4]
 		status = row[5]	
 		# measured = row[6]
-		# test_condition = row[7]
+		test_condition = row[6]
 		# limit_type = row[8]
 		# nominal = row[9]
 		# high_limit = row[10]
 		# low_limit = row[11]
-		end_time = row[6]
-		seq = row[7]
+		end_time = row[7]
+		seq = row[8]
 		sfc_repair = 0
 		label = '？？？'
 		label_no = 999			#label編號: 0-無維修紀錄 1-零件或製程問題 2-程式不穩定 3-探針或接觸問題 4-零件與維修記錄無法匹配 5-找不到重測紀錄 6-wirelist查無資料 7-重測失敗
 		isDone = False			#邏輯判斷結束
 		isMatch = False			#FailSymptom是否一致
 		isNDF = False 			#是否NPF
-		debugRow = sn +' '+ component +' '+ test_type +': '			#追蹤流程走向
+		debugRow = sn +' '+ component +' '+ test_type + str(end_time) + ': '			#追蹤流程走向
 		day90 = datetime.timedelta(days=90) 	#90天前的紀錄不予理會
 		min5 = datetime.timedelta(minutes=5) 	#匹配api資料內和資料庫的時間差（相差5分內的極大可能為同一資料）
 		min1 = datetime.timedelta(minutes=1)
-		now = datetime.datetime.now()  	#獲取當前時間
+		now = datetime.datetime.now()		 	#獲取當前時間
 		if end_time > (now - day90):
-			debugRow = debugRow + 'in90d -> '
+			debugRow = debugRow + 'in90d '+str(now)+' -> '
 			#查詢SFC是否有fail紀錄
 			retries = 0			#連接api時失敗重試
 			success = False
@@ -176,8 +170,7 @@ def Fetch() :
 				debugRow = debugRow + '(' + fail_info['Repair']['FailSymptom'] +"("+fail_info['Repair']['Createdate']+')/('+str(end_time)+'))'
 				#判定Fail Symptom是否一致
 				if fail_info['Repair']['FailSymptom'] == 'failed analog test' \
-				and datetime.datetime.strptime(fail_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') > end_time-min1 \
-				and datetime.datetime.strptime(fail_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') < end_time+min5 :
+				and datetime.datetime.strptime(fail_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') > end_time-min5 :
 					sameSymptom = True
 			if sameSymptom is True: 
 				debugRow = debugRow + 'same Symptom -> '
@@ -204,8 +197,13 @@ def Fetch() :
 					failurecode = ''
 					failLocation = ''
 					for repair_info in SFC_result['data'] :
-						if datetime.datetime.strptime(repair_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') > end_time-min5 \
-						and datetime.datetime.strptime(repair_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') < end_time+min5 :
+						if repair_info['Repair']['Rootcause'] == '':
+							debugRow = debugRow + 'no record -> '
+							#沒有維修紀錄(沒維修或記錄已被清除(超過90天))
+							has_record = False
+							label = '無維修紀錄'
+							label_no = 0
+						elif datetime.datetime.strptime(repair_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') > end_time-min5 :
 							has_record = True
 							sfc_repair = 1
 							failurecode = repair_info['Repair']['Rootcause']
@@ -232,7 +230,7 @@ def Fetch() :
 							# print(label)
 						else :
 							debugRow = debugRow + 'component no match -> '
-							isNDF = False 
+							isNDF = True 
 							label = '零件與維修紀錄無法匹配'
 							label_no = 4
 							# print(label)
@@ -269,12 +267,12 @@ def Fetch() :
 					for line in findRetest :
 						#查找重測是否成功
 						re_sn = line[1]
-						re_status = line[2]    #block_status
 						re_component = line[3]
+						re_status = line[5]    #not block_status
 						re_time = line[12]
 						no_ShareBRC = False
 						program_unstable = False
-						if re_status == '00' : 
+						if re_status == '0' : 
 							Retest_Pass = True
 					if Retest_Pass is True:
 						debugRow = debugRow + 're-test pass -> '
@@ -289,69 +287,82 @@ def Fetch() :
 						if WireList.rowcount == 0:
 							label = 'Wirelist查無資料'
 							label_no = 6
+							no_ShareBRC = True
 							# print(label)
-							break
+							# break
 						else: 
 							for wire in WireList :
 								wire_component = wire[2]
 								wire_BRC = wire[5]
 								sharedBRC.append(wire_BRC)
-
-						ShareBRC = commonObj.MySqlConn.cursor()
-						ShareBRC.execute(textwrap.dedent('''
-							SELECT *,count(*) FROM (
-							SELECT * FROM `wirelist` WHERE `board` = '{0}'AND `BRC` = '{1}' AND component != '{2}' and test_type = 'analog' and (mark = 's' or mark = 'i')
-							UNION ALL
-							SELECT * FROM `wirelist` WHERE `board` = '{0}' AND `BRC` = '{3}' AND component != '{2}' and test_type = 'analog' and (mark = 's' or mark = 'i')
-							) a
-							GROUP BY board,test_type,component,subtest
-							HAVING COUNT(*)>1
-							'''.format(TestBoard,sharedBRC[0],component,sharedBRC[1])))
-						if ShareBRC.rowcount == 0 : 
-							#找不到共用針點則直接挑出
-							no_ShareBRC = True		#沒有共用針點
-							# break
-						else:
-							for other_wire in ShareBRC:
-								other_component = other_wire[2]
-								#儲存零件
-								sharedBRCcomponent.append(other_component) 
-						ShareBRC.close()
-						#使用個別零件尋找其他sn
-						if no_ShareBRC is False:
-							for BRC in sharedBRCcomponent:
-								findSN = commonObj.MySqlConn.cursor()
-								findSN.execute(textwrap.dedent('''
-									SELECT `block_status` FROM {0}
-									where component = '{1}' and sn = '{2}'
-									ORDER BY `end_time` ASC, `seq` ASC
-									'''.format(TestTB,BRC,sn)))
-								if findSN.rowcount == 0:
-									#有查到共用針點但是沒有測試結果
+							for BRC in sharedBRC:
+								# 查找共用點是否超過10個
+								FindPWR = commonObj.MySqlConn.cursor()
+								FindPWR.execute(textwrap.dedent('''
+									SELECT * FROM `wirelist` WHERE `board` = '{0}' AND `BRC` = '{1}' AND component != '{2}' and test_type = 'analog' and (mark = 's' or mark = 'i')
+									'''.format(TestBoard,BRC,component)))
+								if FindPWR.rowcount >= 10 :
+									FindPWR.close()
 									no_ShareBRC = True
 									break
-								else :
-									for findSN_result in findSN :
-										#一次PASS則結束
-										if findSN_result[0] == '00':
-											program_unstable = True
-											label = '程式不穩定'
-											label_no = 2
-											# print(label)
-											break
-								if program_unstable is True: 
-									break
-								else :
-									stored_sn.append(sn)
-									label = '探針或測試點接觸問題'
-									label_no = 3
-									# print(label)
-								findSN.close()
+							if no_ShareBRC is False:
+								ShareBRC = commonObj.MySqlConn.cursor()
+								ShareBRC.execute(textwrap.dedent('''
+									SELECT *,count(*) FROM (
+									SELECT * FROM `wirelist` WHERE `board` = '{0}' AND `BRC` = '{1}' AND component != '{2}' and test_type = 'analog' and (mark = 's' or mark = 'i')
+									UNION ALL
+									SELECT * FROM `wirelist` WHERE `board` = '{0}' AND `BRC` = '{3}' AND component != '{2}' and test_type = 'analog' and (mark = 's' or mark = 'i')
+									) a
+									GROUP BY board,test_type,component,subtest
+									HAVING COUNT(*)>1
+									'''.format(TestBoard,sharedBRC[0],component,sharedBRC[1])))
+								if ShareBRC.rowcount == 0 : 
+									#找不到共用針點則直接挑出
+									no_ShareBRC = True		#沒有共用針點
+									# break
+								else:
+									for other_wire in ShareBRC:
+										other_component = other_wire[2]
+										#儲存零件
+										sharedBRCcomponent.append(other_component) 
+								ShareBRC.close()
+							#使用個別零件尋找其他sn
+							if no_ShareBRC is False:
+								for BRC in sharedBRCcomponent:
+									findSN = commonObj.MySqlConn.cursor()
+									findSN.execute(textwrap.dedent('''
+										SELECT `block_status` FROM {0}
+										where component = '{1}' and sn = '{2}'
+										ORDER BY `end_time` ASC, `seq` ASC
+										'''.format(TestTB,BRC,sn)))
+									if findSN.rowcount == 0:
+										#有查到共用針點但是沒有測試結果
+										no_ShareBRC = True
+										break
+
+									else :
+										for findSN_result in findSN :
+											#一次PASS則結束
+											if findSN_result[0] == '00':
+												program_unstable = True
+												label = '程式不穩定'
+												label_no = 2
+												# print(label)
+												break
+									if program_unstable is True: 
+										break
+									else :
+										stored_sn.append(sn)
+										label = '探針或測試點接觸問題'
+										label_no = 3
+										# print(label)
+									findSN.close()
 						if no_ShareBRC is True :
 							#計算CPK
 							CPK = 0
-							if component in stored_CPK:
-								CPK = stored_CPK[component]
+							component_combine = component+'|'+test_type+'|'+test_condition
+							if component_combine in stored_CPK:
+								CPK = stored_CPK[component_combine]
 								if CPK > 0.67 : 
 									stored_sn.append(sn)
 									label = '探針或測試點接觸問題(' + str(CPK) + ')' 
@@ -359,16 +370,17 @@ def Fetch() :
 								else : 
 									label = '程式不穩定(' + str(CPK) + ')'
 									label_no = 2
-								# print(label)
+								# print(label)           
 							else:
 								print('===Count CPK===')
 								# t1 = time.time()
-								stored_component.append(component+'|'+test_type)
+								stored_component.append(component_combine)
 								countCPK = commonObj.MySqlConn.cursor()
 								countCPK.execute(textwrap.dedent('''
 									SELECT * FROM {0}
-									WHERE component = '{1}' AND test_type = '{2}' ORDER BY `end_time` ASC
-									'''.format(TestTB,re_component,test_type)))
+									WHERE component = '{1}' AND test_type = '{2}' AND test_condition = '{3}' AND end_time > '{4}' 
+									ORDER BY `end_time` ASC
+									'''.format(TestTB,re_component,test_type,test_condition,(now - day90).strftime("%Y-%m-%d %H:%M:%S"))))
 								# t2 = time.time()
 								# print('======find cpk use %f sec =====' % (t2 - t1))
 								T = []
@@ -376,7 +388,7 @@ def Fetch() :
 								HighAndLow = []
 								total = []
 								for data in countCPK:
-									if (data[6] >= 0 and data[6] <= ((data[10]+data[11])/2)*5):		#篩選掉明顯有問題的資料
+									if (abs(data[6]) <= abs(data[10]-data[11])*5):		#篩選掉明顯有問題的資料
 										if (data[10]-data[11]) != 0:
 											T.append(data[10]-data[11])
 										HighAndLow.append(data[10]+data[11])
@@ -386,13 +398,12 @@ def Fetch() :
 								VAR = np.std(total)
 								if nominal is None : 
 									nominal = HighAndLow[0]/2
-								# if T[0] == 0 or T[0] is None :
-								# 	break
-								CA = abs((MEAN - nominal)/(T[0]/2))
-								CP = T[0]/(VAR*6)
-								CPK = (1-CA)*(CP)
-								stored_CPK[component] = CPK
-								isDone = True
+								if T is not None :
+									CA = abs((MEAN - nominal)/(T[0]/2))
+									CP = T[0]/(VAR*6)
+									CPK = (1-CA)*(CP)
+									stored_CPK[component_combine] = CPK
+									isDone = True
 								# t3 = time.time()
 								# print('======count use %f sec =====' % (t3 - t2))
 								print('CPK = ' + str(CPK) + '\n')
@@ -406,7 +417,7 @@ def Fetch() :
 									CA = abs((MEAN - nominal)/(T[0]/2))
 									CP = T[0]/(VAR*6)
 									CPK = (1-CA)*(CP)
-									stored_CPK[component] = CPK
+									stored_CPK[component_combine] = CPK
 									if CPK > 0.67 : 
 										stored_sn.append(sn)
 										label = '探針或測試點接觸問題(' + str(CPK) + ')' 
@@ -429,8 +440,8 @@ def Fetch() :
 			# 	UPDATE {0} SET sfc_repair = '{1}',label = '{2}' WHERE sn = '{3}' AND component = '{4}' AND test_type = '{5}' AND end_time = '{6}';
 			# 	'''.format(TestTB,sfc_repair,label,sn,component,test_type,end_time)))
 			SqlList.append(textwrap.dedent('''
-				INSERT IGNORE INTO {0} (logic_type,seq,component,test_type,label,label_no) VALUES ('analog','{1}','{2}','{3}','{4}','{5}');
-				'''.format(LabelTB,seq,component,test_type,label,label_no)))
+				INSERT IGNORE INTO {0} (logic_type,seq,sn,component,test_type,test_condition,label,label_no) VALUES ('analog','{1}','{2}','{3}','{4}','{5}','{6}','{7}');
+				'''.format(LabelTB,seq,sn,component,test_type,test_condition,label,label_no)))
 		debugRow = debugRow + 'done\n'
 		debug.append(debugRow)
 		# Cur = commonObj.MySqlConn.cursor()
@@ -439,9 +450,6 @@ def Fetch() :
 		# 	'''.format(sfc_repair,label,sn,component,test_type)))
 		# commonObj.MySqlConn.commit()
 		# Cur.close()
-	with open('./Output.sql' ,'wb') as f:
-		f.write(bytearray(''.join(SqlList),"utf-8"))
-		f.close()
 	with open('./Seqence.txt' ,'wb') as fo:
 		fo.write(bytearray(''.join(debug),"utf-8"))
 		fo.close()
@@ -451,54 +459,71 @@ def Fetch() :
 	print('===Count CPK Twice===')
 	for CPK_twice in stored_component_new:
 		#計算第二次CPK
+		print(CPK_twice)
 		CPK = 0
 		countCPK = commonObj.MySqlConn.cursor()
 		sp = CPK_twice.split('|')
 		countCPK.execute(textwrap.dedent('''
 			SELECT * FROM {0}
-			WHERE component = '{1}' AND test_type = '{2}' ORDER BY `end_time` ASC
-			'''.format(TestTB,sp[0],sp[1])))
+			WHERE component = '{1}' AND test_type = '{2}' AND test_condition = '{3}' AND end_time > '{4}'
+			ORDER BY `end_time` ASC
+			'''.format(TestTB,sp[0],sp[1],sp[2],(now - day90).strftime("%Y-%m-%d %H:%M:%S"))))
 		T = []
 		nominal = 0
 		HighAndLow = []
 		total = []
-		for data in countCPK:
-			sn2 = data[1]
-			measured2 = data[6]
-			nominal2 = data[9]
-			high_limit2 = data[10]
-			low_limit2 = data[11]
-			if sn2 not in stored_sn:
-				if (measured2 >= 0 and measured2 <= ((high_limit2+low_limit2)/2)*5):		#篩選掉明顯有問題的資料
-					if (high_limit2-low_limit2) != 0:
-						T.append(high_limit2-low_limit2)
-					HighAndLow.append(high_limit2+low_limit2)
-					nominal = nominal2
-					total.append(measured2)
-		MEAN = np.mean(total)
-		VAR = np.std(total)
-		if nominal is None : 
-			nominal = HighAndLow[0]/2
-		# if T[0] == 0 or T[0] is None :
-		# 	break
-		CA = abs((MEAN - nominal)/(T[0]/2))
-		CP = T[0]/(VAR*6)
-		CPK = (1-CA)*(CP)
-		isDone = True
+		try:
+			for data in countCPK:
+				sn2 = data[1]
+				measured2 = data[6]
+				nominal2 = data[9]
+				high_limit2 = data[10]
+				low_limit2 = data[11]
+				if sn2 not in stored_sn:
+					if (abs(measured2) <= abs(high_limit2-low_limit2)*5):		#篩選掉明顯有問題的資料
+						if (high_limit2-low_limit2) != 0:
+							T.append(high_limit2-low_limit2)
+						HighAndLow.append(high_limit2+low_limit2)
+						nominal = nominal2
+						total.append(measured2)
+			MEAN = np.mean(total)
+			VAR = np.std(total)
+			if nominal is None : 
+				nominal = HighAndLow[0]/2
+			# if T[0] == 0 or T[0] is None :
+			# 	break
+			CA = abs((MEAN - nominal)/(T[0]/2))
+			CP = T[0]/(VAR*6)
+			CPK = (1-CA)*(CP)
+			isDone = True
 		# print('CPK = ' + str(CPK) + '\n')
 		# SqlList.append(textwrap.dedent('''
 		# 	UPDATE {0} SET cpk = '{1}' WHERE component = '{2}' AND test_type = '{3}';
 		# 	'''.format(TestTB,CPK,sp[0],sp[1])))
-		SqlList.append(textwrap.dedent('''
-			UPDATE {0} SET cpk = '{1}' WHERE component = '{2}' AND test_type = '{3}';
-			'''.format(LabelTB,CPK,sp[0],sp[1])))
+			SqlList.append(textwrap.dedent('''
+				UPDATE {0} SET cpk = '{1}' WHERE component = '{2}' AND test_type = '{3}' AND test_condition = '{4}';
+				'''.format(LabelTB,CPK,sp[0],sp[1],sp[2])))
+		except Exception as err:
+			print(r.raise_for_status()) 
 
 		countCPK.close()
 	print('===Count CPK Done===')
 	FulearnCur.close()
 	
-	Cur = commonObj.MySqlConn.cursor()
+	with open('./Output.sql' ,'wb') as f:
+		f.write(bytearray(''.join(SqlList),"utf-8"))
+		f.close()
+	#程式執行前先清空舊資料
+	truncate = commonObj.MySqlConn.cursor()
+	# truncate.execute(textwrap.dedent('''
+	# 	TRUNCATE TABLE {0}
+	# 	'''.format(LabelTB)))
+	truncate.execute(textwrap.dedent('''
+		DELETE FROM {0} WHERE logic_type = 'analog'
+		'''.format(LabelTB)))
+	truncate.close()
 
+	Cur = commonObj.MySqlConn.cursor()
 	for update in SqlList:
 		Cur.execute(update)
 		commonObj.MySqlConn.commit()
