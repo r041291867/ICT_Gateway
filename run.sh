@@ -1,7 +1,9 @@
-python PowerCheck.py
-python BoundaryScan.py
-python Short.py
-python Open.py
-python Testjet.py
-python AnalogPowered.py
-python Analog.py
+Env=$1
+
+python ./PowerCheck.py ${Env}
+python ./BoundaryScan.py ${Env}
+python ./Short.py ${Env}
+python ./Open.py ${Env}
+python ./Testjet.py ${Env}
+python ./AnalogPowered.py ${Env}
+python ./Analog.py ${Env}
