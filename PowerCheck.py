@@ -60,6 +60,7 @@ ErrCode = {
 	'E984': 'not NDF', 'E908': 'not NDF', 'E909': 'not NDF', 'E910': 'not NDF', 'E911': 'not NDF', 
 	'E912': 'not NDF', 'E913': 'not NDF', 'E914': 'not NDF', 'E985': 'not NDF', 'E916': 'not NDF', 
 	'E917': 'not NDF', 'E918': 'not NDF', 'E919': 'not NDF', 'E986': 'not NDF', 'E987': 'NDF', 
+	'E915': 'not NDF'
 }
 
 # 根據下的參數轉換執行環境
@@ -184,7 +185,7 @@ def Fetch() :
 				while retries < 7 and not success:
 					try:
 						BU = 'UAG'
-						print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
+						# print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						if r.status_code == requests.codes.ok : success = True
 						SFC_result = r.json() 
@@ -207,7 +208,7 @@ def Fetch() :
 							sfc_repair = 1
 							failurecode = repair_info['Repair']['Rootcause']
 							failLocation = repair_info['Repair']['Location']
-							print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
+							# print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
 
 					if failurecode == '' :
 						debugRow = debugRow + 'no record -> '
@@ -236,8 +237,6 @@ def Fetch() :
 				debugRow = debugRow + 'find re-test -> '
 				#查找是否重測
 				Retest_Pass = False
-				print ('find re-test ' + sn + ' ' + power_check)
-				zstart = time.time()
 				findRetest = commonObj.MySqlConn.cursor()
 				findRetest.execute(textwrap.dedent('''
 					SELECT a.*,b.`board` FROM {0} a
@@ -245,8 +244,6 @@ def Fetch() :
 					WHERE b.board='{1}' AND a.`sn` = '{2}' AND a.`end_time` > '{3}' AND a.`power_check_type` = '{4}'
 					GROUP BY `end_time` ORDER BY `end_time` ASC
 					'''.format(TestTB,TestBoard,sn,end_time,power_check_type)))
-				zend = time.time()
-				print('======retest use %f sec =====' % (zend - zstart))
 				isDone = False		#邏輯判斷結束
 				re_sn = ''
 				re_time = ''
@@ -281,14 +278,15 @@ def Fetch() :
 								label_no = 2
 							# print(label)
 						else:
-							print('===Count CPK===')
+							# print('===Count CPK===')
 							# t1 = time.time()
 							stored_component.append(pwr_check_combine)
 							countCPK = commonObj.MySqlConn.cursor()
 							countCPK.execute(textwrap.dedent('''
-								SELECT * FROM {0}
-								WHERE power_check_type = '{1}' AND power_check = '{2}' ORDER BY `end_time` ASC
-								'''.format(TestTB,power_check_type,power_check)))
+								SELECT * FROM {0} a
+								INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
+								WHERE b.board='{1}' AND a.power_check_type = '{2}' AND a.power_check = '{3}' ORDER BY a.`end_time` ASC
+								'''.format(TestTB,TestBoard,power_check_type,power_check)))
 							# t2 = time.time()
 							# print('======find cpk use %f sec =====' % (t2 - t1))
 							T = []
@@ -315,7 +313,7 @@ def Fetch() :
 							isDone = True
 							# t3 = time.time()
 							# print('======count use %f sec =====' % (t3 - t2))
-							print('CPK = ' + str(CPK) + '\n')
+							# print('CPK = ' + str(CPK) + '\n')
 							if CPK > 0.67 : 
 								stored_sn.append(sn)
 								label = '探針或測試點接觸問題(' + str(CPK) + ')' 
@@ -360,16 +358,17 @@ def Fetch() :
 	stored_sn_new = list(set(stored_sn))
 	stored_component_new = list(set(stored_component))
 	stored_CPK_II = {}
-	print('===Count CPK Twice===')
+	# print('===Count CPK Twice===')
 	for CPK_twice in stored_component_new:
 		#計算第二次CPK
 		CPK = 0
 		countCPK = commonObj.MySqlConn.cursor()
 		sp = CPK_twice.split('|')
 		countCPK.execute(textwrap.dedent('''
-			SELECT * FROM {0}
-			WHERE power_check_type = '{1}' AND power_check = '{2}' ORDER BY `end_time` ASC
-			'''.format(TestTB,sp[0],sp[1])))
+			SELECT * FROM {0} a
+			INNER JOIN ict_result b ON a.machine=b.machine AND a.sn=b.sn AND a.end_time=b.end_time 
+			WHERE b.board='{1}' AND a.power_check_type = '{2}' AND a.power_check = '{3}' ORDER BY a.`end_time` ASC
+			'''.format(TestTB,TestBoard,sp[0],sp[1])))
 		T = []
 		nominal = 0
 		HighAndLow = []
@@ -399,11 +398,11 @@ def Fetch() :
 		isDone = True
 
 		SqlList.append(textwrap.dedent('''
-			UPDATE {0} SET cpk = '{1}' WHERE power_check_type = '{2}' AND power_check = '{3}';
+			UPDATE IGNORE {0} SET cpk = '{1}' WHERE power_check_type = '{2}' AND power_check = '{3}';
 			'''.format(LabelTB,CPK,sp[0],sp[1])))
 
 		countCPK.close()
-	print('===Count CPK Done===')
+	# print('===Count CPK Done===')
 	FulearnCur.close()
 	
 	#程式執行前先清空舊資料

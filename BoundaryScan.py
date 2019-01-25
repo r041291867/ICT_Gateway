@@ -20,7 +20,7 @@ getcontext().prec = 15
 
 class common() :
 	MySqlConn = None
-	GatewayName = 'PowerCheck Fail Check'
+	GatewayName = 'BoundaryScan Fail Check'
 
 commonObj = common()
 # 維修代碼
@@ -60,13 +60,14 @@ ErrCode = {
 	'E984': 'not NDF', 'E908': 'not NDF', 'E909': 'not NDF', 'E910': 'not NDF', 'E911': 'not NDF', 
 	'E912': 'not NDF', 'E913': 'not NDF', 'E914': 'not NDF', 'E985': 'not NDF', 'E916': 'not NDF', 
 	'E917': 'not NDF', 'E918': 'not NDF', 'E919': 'not NDF', 'E986': 'not NDF', 'E987': 'NDF', 
+	'E915': 'not NDF'
 }
 
 # 根據下的參數轉換執行環境
 Env = {}
-Env['ICT'] = ['ICT','power_on_result','73-18275-04','label_18275']
-Env['ICT4'] = ['ICT','power_on_result','73-18274-04','label_18274']
-Env['ICT_Exp'] = ['ICT_exp','power_on_result','73-18275-04','label_18275']
+Env['ICT'] = ['ICT','boundary_scan_result','73-18275-04','label_18275']
+Env['ICT4'] = ['ICT','boundary_scan_result','73-18274-04','label_18274']
+Env['ICT_Exp'] = ['ICT_exp','boundary_scan_result','73-18275-04','label_18275']
 TestDB = ''
 TestTB = ''
 TestBoard = ''
@@ -78,7 +79,7 @@ if len(sys.argv) > 1 :
 else : 
 	#未輸入參數的預設環境
 	TestDB = 'ICT'
-	TestTB = 'power_on_result'
+	TestTB = 'boundary_scan_result'
 	TestBoard = '73-18275-04'
 	LabelTB = 'label_18275'
 
@@ -175,7 +176,7 @@ def Fetch() :
 				while retries < 7 and not success:
 					try:
 						BU = 'UAG'
-						print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
+						# print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						if r.status_code == requests.codes.ok : success = True
 						SFC_result = r.json() 
@@ -198,7 +199,7 @@ def Fetch() :
 							sfc_repair = 1
 							failurecode = repair_info['Repair']['Rootcause']
 							failLocation = repair_info['Repair']['Location']
-							print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
+							# print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
 
 					if failurecode == '' :
 						debugRow = debugRow + 'no record -> '
@@ -214,7 +215,6 @@ def Fetch() :
 						if failLocation.lower() == component.split('_')[0] :
 							debugRow = debugRow + 'component match -> '
 							isNDF = False
-							stored_sn.append(sn)
 							label = '零件或製程問題'
 							label_no = 1
 							# print(label)
@@ -236,8 +236,6 @@ def Fetch() :
 				debugRow = debugRow + 'find re-test -> '
 				#查找是否重測
 				Retest_Pass = False
-				print ('find re-test ' + sn + ' ' + component)
-				zstart = time.time()
 				findRetest = commonObj.MySqlConn.cursor()
 				findRetest.execute(textwrap.dedent('''
 					SELECT a.*,b.`board` FROM `boundary_scan_result` a 
@@ -245,8 +243,6 @@ def Fetch() :
 					WHERE b.board='{0}' AND a.sn = '{1}' AND a.component = '{2}' AND a.end_time > '{3}'
 					GROUP BY a.end_time ORDER BY `end_time`,`seq` ASC
 					'''.format(TestBoard,sn,component,end_time)))
-				zend = time.time()
-				print('======retest use %f sec =====' % (zend - zstart))
 				isDone = False		#邏輯判斷結束
 				re_sn = ''
 				re_time = ''
@@ -302,7 +298,7 @@ def Fetch() :
 									Group by end_time ORDER BY `end_time`,`seq` ASC
 									'''.format(TestBoard,component)))
 								liang_lu = 1 - (countFail.rowcount/countTotal.rowcount)
-								print('良率：' + str(liang_lu))
+								# print('良率：' + str(liang_lu))
 								stored_LL[component] = liang_lu
 								if liang_lu > 0.99:			
 									label = '探針或測試點接觸問題' + '(' + str(liang_lu) + ')'

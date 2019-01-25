@@ -177,7 +177,7 @@ def Fetch() :
 				while retries < 7 and not success:
 					try:
 						BU = 'UAG'
-						print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
+						# print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						if r.status_code == requests.codes.ok : success = True
 						SFC_result = r.json() 
@@ -229,8 +229,6 @@ def Fetch() :
 				debugRow = debugRow + 'find re-test -> '
 				#查找是否重測
 				Retest_Pass = False
-				print ('find re-test ' + sn)
-				zstart = time.time()
 				findRetest = commonObj.MySqlConn.cursor()
 				findRetest.execute(textwrap.dedent('''
 					SELECT a.*,b.board FROM {0} a
@@ -238,8 +236,6 @@ def Fetch() :
 					WHERE b.board='{1}' AND a.sn = '{2}' AND a.end_time >= '{3}' 
 					ORDER BY `seq` ASC 
 					'''.format(TestTB,TestBoard,sn,end_time)))
-				zend = time.time()
-				print('======retest use %f sec =====' % (zend - zstart))
 				isDone = False		#邏輯判斷結束
 				re_sn = ''
 				re_time = ''

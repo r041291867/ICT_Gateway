@@ -185,7 +185,7 @@ def Fetch() :
 				while retries < 7 and not success:
 					try:
 						BU = 'UAG'
-						print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
+						# print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						if r.status_code == requests.codes.ok : success = True
 						SFC_result = r.json() 
@@ -208,7 +208,7 @@ def Fetch() :
 							sfc_repair = 1
 							failurecode = repair_info['Repair']['Rootcause']
 							failLocation = repair_info['Repair']['Location']
-							print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
+							# print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
 
 					if failurecode == '' :
 						debugRow = debugRow + 'no record -> '
@@ -246,15 +246,11 @@ def Fetch() :
 				debugRow = debugRow + 'find re-test -> '
 				#查找是否重測
 				Retest_Pass = False
-				print ('find re-test ' + sn + ' ' + component)
-				zstart = time.time()
 				findRetest = commonObj.MySqlConn.cursor()
 				findRetest.execute(textwrap.dedent('''
 					SELECT * FROM {0} WHERE `sn` = '{1}' AND `component` = '{2}' AND test_type = '{3}' AND end_time >= '{4}'
 					ORDER BY `seq` ASC
-					'''.format(TestTB,sn,component,test_type,end_time)))
-				zend = time.time()
-				print('======retest use %f sec =====' % (zend - zstart))
+					'''.format(TestTB,sn,component,test_type,end_time)))			
 				isDone = False		#邏輯判斷結束
 				re_sn = ''
 				re_time = ''
@@ -372,7 +368,7 @@ def Fetch() :
 									label_no = 2
 								# print(label)           
 							else:
-								print('===Count CPK===')
+								# print('===Count CPK===')
 								# t1 = time.time()
 								stored_component.append(component_combine)
 								countCPK = commonObj.MySqlConn.cursor()
@@ -406,7 +402,7 @@ def Fetch() :
 									isDone = True
 								# t3 = time.time()
 								# print('======count use %f sec =====' % (t3 - t2))
-								print('CPK = ' + str(CPK) + '\n')
+								# print('CPK = ' + str(CPK) + '\n')
 								if CPK > 0.67 : 
 									stored_sn.append(sn)
 									label = '探針或測試點接觸問題(' + str(CPK) + ')' 
@@ -456,10 +452,10 @@ def Fetch() :
 	stored_sn_new = list(set(stored_sn))
 	stored_component_new = list(set(stored_component))
 	stored_CPK_II = {}
-	print('===Count CPK Twice===')
+	# print('===Count CPK Twice===')
 	for CPK_twice in stored_component_new:
 		#計算第二次CPK
-		print(CPK_twice)
+		# print(CPK_twice)
 		CPK = 0
 		countCPK = commonObj.MySqlConn.cursor()
 		sp = CPK_twice.split('|')
@@ -486,6 +482,7 @@ def Fetch() :
 						HighAndLow.append(high_limit2+low_limit2)
 						nominal = nominal2
 						total.append(measured2)
+
 			MEAN = np.mean(total)
 			VAR = np.std(total)
 			if nominal is None : 
@@ -501,13 +498,13 @@ def Fetch() :
 		# 	UPDATE {0} SET cpk = '{1}' WHERE component = '{2}' AND test_type = '{3}';
 		# 	'''.format(TestTB,CPK,sp[0],sp[1])))
 			SqlList.append(textwrap.dedent('''
-				UPDATE {0} SET cpk = '{1}' WHERE component = '{2}' AND test_type = '{3}' AND test_condition = '{4}';
+				UPDATE IGNORE {0} SET cpk = '{1}' WHERE component = '{2}' AND test_type = '{3}' AND test_condition = '{4}';
 				'''.format(LabelTB,CPK,sp[0],sp[1],sp[2])))
 		except Exception as err:
 			print(r.raise_for_status()) 
 
 		countCPK.close()
-	print('===Count CPK Done===')
+	# print('===Count CPK Done===')
 	FulearnCur.close()
 	
 	with open('./Output.sql' ,'wb') as f:

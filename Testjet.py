@@ -60,6 +60,7 @@ ErrCode = {
 	'E984': 'not NDF', 'E908': 'not NDF', 'E909': 'not NDF', 'E910': 'not NDF', 'E911': 'not NDF', 
 	'E912': 'not NDF', 'E913': 'not NDF', 'E914': 'not NDF', 'E985': 'not NDF', 'E916': 'not NDF', 
 	'E917': 'not NDF', 'E918': 'not NDF', 'E919': 'not NDF', 'E986': 'not NDF', 'E987': 'NDF', 
+	'E915': 'not NDF'
 }
 
 # 根據下的參數轉換執行環境
@@ -180,7 +181,7 @@ def Fetch() :
 				while retries < 7 and not success:
 					try:
 						BU = 'UAG'
-						print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
+						# print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
 						if r.status_code == requests.codes.ok : success = True
 						SFC_result = r.json() 
@@ -203,7 +204,7 @@ def Fetch() :
 							sfc_repair = 1
 							failurecode = repair_info['Repair']['Rootcause']
 							failLocation = repair_info['Repair']['Location']
-							print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
+							# print ('failurecode: ' + failurecode + ' -> ' + ErrCode[failurecode])
 
 					if failurecode == '' :
 						debugRow = debugRow + 'no record -> '
@@ -231,16 +232,12 @@ def Fetch() :
 				debugRow = debugRow + 'find re-test -> '
 				#查找是否重測
 				Retest_Pass = False
-				print ('find re-test ' + sn + ' ' + device)
-				zstart = time.time()
 				findRetest = commonObj.MySqlConn.cursor()
 				findRetest.execute(textwrap.dedent('''
 					SELECT * FROM `testjet_result`
 					WHERE board='{0}' AND `sn` = '{1}' AND `device` = '{2}' AND `end_time` = '{3}'
 					ORDER BY `end_time` ASC
 					'''.format(TestBoard,sn,device,end_time)))
-				zend = time.time()
-				print('======retest use %f sec =====' % (zend - zstart))
 				isDone = False		#邏輯判斷結束
 				re_sn = ''
 				re_time = ''
