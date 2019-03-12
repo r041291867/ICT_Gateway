@@ -21,35 +21,13 @@ getcontext().prec = 10
 
 class common() :
 	MySqlConn = None
-	GatewayName = 'Testjet Fail Check'
+	GatewayName = 'Digital Fail Check'
 
 commonObj = common()
 with open('data.json' , 'r') as reader:
     jf = json.loads(reader.read())
 # 維修代碼
 ErrCode = jf['ErrCode']
-
-# # 根據下的參數轉換執行環境
-# Env = {}
-# Env['ICT'] = ['ICT','testjet_fail','73-18275-04','label_18275']
-# Env['ICT4'] = ['ICT','testjet_fail','73-18274-04','label_18274']
-# Env['ICT_Exp'] = ['ICT_Exp','testjet_fail','73-18275-04','label_18275']
-# Env['ICT_Exp3'] = ['ICT_Exp','testjet_fail','73-18273-04','label_18273']
-# Env['ICT_Exp4'] = ['ICT_Exp','testjet_fail','73-18274-04','label_18274']
-# TestDB = ''
-# TestTB = ''
-# TestBoard = ''
-# if len(sys.argv) > 1 :
-# 	TestDB = Env[sys.argv[1]][0]
-# 	TestTB = Env[sys.argv[1]][1]
-# 	TestBoard = Env[sys.argv[1]][2]
-# 	LabelTB = Env[sys.argv[1]][3]
-# else : 
-# 	#未輸入參數的預設環境
-# 	TestDB = 'ICT'
-# 	TestTB = 'testjet_fail'
-# 	TestBoard = '73-18275-04'
-# 	LabelTB = 'label_18275'
 
 def main() :
 	config = configparser.RawConfigParser()
@@ -97,8 +75,9 @@ def Fetch() :
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料(測試步驟Fail)
 	FulearnCur.execute(textwrap.dedent('''
-		SELECT * FROM `testjet_fail`  WHERE end_time BETWEEN '{0}' AND '{1}'
-		GROUP BY `sn`,`device`,`pins` ORDER BY `end_time` ASC
+		SELECT * FROM `digital_result`
+		WHERE status = 1 AND end_time BETWEEN '{0}' AND '{1}'
+		GROUP BY `sn`,`component` ORDER BY `end_time` ASC
 		'''.format(StartTime,EndTime)))
 	SqlList = []
 	debug = []
@@ -106,24 +85,18 @@ def Fetch() :
 	for row in FulearnCur :
 		machine = row[0]
 		sn = row[1]
-		status = row[2]
-		device = row[3]
+		component = row[2]
+		status = row[3]
 		end_time = row[4]
-		board = row[5]
-		fall_no = row[6]
-		pins = row[7]
-		node = row[8]		#fg新欄位
-		measured = row[9]
-		BRC = [10]			#fg新欄位
-		seq = row[11]
+		seq = row[5]
+		board = row[6]
 		sfc_repair = 0
 		label = '？？？'
 		label_no = 999			#label編號: 0-無維修紀錄 1-零件或製程問題 2-程式不穩定 3-探針或接觸問題 4-零件與維修記錄無法匹配 5-找不到重測紀錄 6-wirelist查無資料 7-重測失敗
 		isDone = False			#邏輯判斷結束
 		isMatch = False			#FailSymptom是否一致
 		isNDF = False 			#是否NPF
-		debugRow = sn +' '+ device +' '+ pins +': '			#追蹤流程走向
-		day90 = datetime.timedelta(days=90) 	#90天前的紀錄不予理會
+		debugRow = sn +' '+ component +': '			#追蹤流程走向
 		min5 = datetime.timedelta(minutes=5) 	#匹配api資料內和資料庫的時間差（相差5分內的極大可能為同一資料）
 		min1 = datetime.timedelta(minutes=1)
 		componentcode = ''		# 零件料號
@@ -152,7 +125,7 @@ def Fetch() :
 			for fail_info in SFC_fail['data'] :
 				debugRow = debugRow + '(' + fail_info['Repair']['FailSymptom'] +"("+fail_info['Repair']['Createdate']+')/('+str(end_time)+'))'
 				#判定Fail Symptom是否一致
-				if fail_info['Repair']['FailSymptom'] == 'failed in TestJet' \
+				if fail_info['Repair']['FailSymptom'] == 'failed digital or boundary scan test' \
 				and datetime.datetime.strptime(fail_info['Repair']['Createdate'], '%Y-%m-%d %H:%M:%S') > end_time-min5 :
 					sameSymptom = True
 			if sameSymptom is True: 
@@ -207,17 +180,25 @@ def Fetch() :
 						# noRecord_Day += 1
 					elif ErrCode[failurecode] != 'NDF':
 						debugRow = debugRow + 'not NDF(' + failurecode + ') -> '
-						isNDF = False
-						label = '零件或製程問題'
-						label_no = 1
+						# 判斷維修零件是否符合錯誤紀錄
+						if failLocation.lower() == component.split('_')[0] :
+							debugRow = debugRow + 'component match -> '
+							isNDF = False
+							label = '零件或製程問題'
+							label_no = 1
+							# print(label)
+						else :
+							debugRow = debugRow + 'component no match -> '
+							isNDF = True 
+							label = '零件與維修紀錄無法匹配'
+							label_no = 4
 							# print(label)
 					else: isNDF = True
 				except Exception as err:
 					traceback.print_exc()
 			else:	
-				debugRow = debugRow + 'no match Symptom -> '
 				#找不到fail紀錄 or FailSymptom不一致
-				
+				debugRow = debugRow + 'no match Symptom -> '
 			if has_record is False and sameSymptom is True:
 				label = '無維修紀錄'
 				label_no = 0
@@ -228,10 +209,11 @@ def Fetch() :
 				Retest_Pass = False
 				findRetest = commonObj.MySqlConn.cursor()
 				findRetest.execute(textwrap.dedent('''
-					SELECT * FROM `testjet_result`
-					WHERE board='{0}' AND `sn` = '{1}' AND `device` = '{2}' AND `end_time` > '{3}'
-					ORDER BY `end_time` ASC
-					'''.format(board,sn,device,end_time)))
+					SELECT * FROM `digital_result`
+					WHERE board='{0}' AND sn = '{1}' AND component = '{2}' AND end_time > '{3}'
+					AND end_time BETWEEN '{4}' AND '{5}'
+					GROUP BY end_time ORDER BY `end_time`,`seq` ASC
+					'''.format(board,sn,component,end_time,StartTime,EndTime)))
 				isDone = False		#邏輯判斷結束
 				re_sn = ''
 				re_time = ''
@@ -244,31 +226,27 @@ def Fetch() :
 					for line in findRetest :
 						#查找重測是否成功
 						re_sn = line[1]
-						re_status = line[2]    #block_status
+						re_component = line[2]
+						re_status = line[3]    #block_status
 						re_time = line[4]
 						no_ShareBRC = False
 						program_unstable = False
-						if re_status == '00' : 
+						if re_status == '0' : 
 							Retest_Pass = True
 					if Retest_Pass is True:
-						#查找上下限
-						findLimit = commonObj.MySqlConn.cursor()
-						findLimit.execute(textwrap.dedent('''
-							SELECT * FROM `testjet_limit`
-							WHERE board='{0}' AND `device` = '{1}' AND `pins` = '{2}'
-							'''.format(board,device,pins)))
-						h_limit = 0
-						l_limit = 0
-						for limit in findLimit:
-							l_limit = Decimal(limit[3])
-							h_limit = Decimal(limit[4])
-						if measured >= h_limit:
-							label = '程式問題'
-							label_no = 2
-						elif measured <= l_limit:		#測試步驟良率
-							#計算失敗次數
-							if device in stored_LL:
-								liang_lu = stored_LL[device]
+						# 查找testjet是否有測試
+						dd3vice = component.split('_')
+						findTestjet = commonObj.MySqlConn.cursor()
+						findTestjet.execute(textwrap.dedent('''
+							SELECT * FROM `testjet_result`
+							WHERE board='{0}' AND sn = '{1}' AND device = '{2}'
+							AND end_time BETWEEN '{3}' AND '{4}'
+							GROUP BY `sn`
+							'''.format(board,sn,dd3vice[0],StartTime,EndTime)))
+						if findTestjet.rowcount == 0:
+							#計算良率
+							if component in stored_LL:
+								liang_lu = stored_LL[component]
 								if liang_lu <= 0.05:
 									label = '感應面板或探針問題 (' + str(1-liang_lu) + ')'
 									label_no = 3
@@ -276,28 +254,30 @@ def Fetch() :
 									label = '程式問題 (' + str(1-liang_lu) + ')'
 									label_no = 2
 							else:
-								countFail = commonObj.MySqlConn.cursor()
-								countFail.execute(textwrap.dedent('''
-									SELECT * FROM `testjet_result` where board = '{0}' and device = '{1}' and status = '01'  
-									AND end_time BETWEEN '{2}' AND '{3}'
-									group by sn,device
-									'''.format(board,device,StartTime,EndTime)))
-								failTime = countFail.rowcount
 								countTotal = commonObj.MySqlConn.cursor()
 								countTotal.execute(textwrap.dedent('''
-									SELECT * FROM `testjet_result` where board = '{0}' and device = '{1}'  
-									AND end_time BETWEEN '{2}' AND '{3}'
-									group by sn,device
-									'''.format(board,device,StartTime,EndTime)))
-								totalTime = countTotal.rowcount
-								liang_lu = failTime/totalTime
-								stored_LL[device] = liang_lu
-								if liang_lu <= 0.05:
-									label = '感應面板或探針問題 (' + str(1-liang_lu) + ')'
+									SELECT * FROM `digital_result`
+									WHERE board='{0}' AND component = '{1}' AND end_time BETWEEN '{2}' AND '{3}'
+									Group by end_time ORDER BY `end_time`,`seq` ASC
+									'''.format(board,component,StartTime,EndTime)))
+								countFail = commonObj.MySqlConn.cursor()
+								countFail.execute(textwrap.dedent('''
+									SELECT * FROM `digital_result`
+									WHERE board='{0}' AND component = '{1}' AND end_time BETWEEN '{2}' AND '{3}' AND status != 0
+									Group by end_time ORDER BY `end_time`,`seq` ASC
+									'''.format(board,component,StartTime,EndTime)))
+								liang_lu = 1 - (countFail.rowcount/countTotal.rowcount)
+								# print('良率：' + str(liang_lu))
+								stored_LL[component] = liang_lu
+								if liang_lu > 0.99:			
+									label = '探針或測試點接觸問題' + '(' + str(liang_lu) + ')'
 									label_no = 3
 								else:
-									label = '程式問題 (' + str(1-liang_lu) + ')'
+									label = '程式問題' + '(' + str(liang_lu) + ')'
 									label_no = 2
+						else: 
+							label = '程式問題'
+							label_no = 2
 					else: 
 						debugRow = debugRow + 're-test fail -> '
 						label = "重測失敗"
@@ -307,8 +287,8 @@ def Fetch() :
 				findRetest.close()
 			#寫入資料表
 			SqlList.append(textwrap.dedent('''
-				INSERT IGNORE INTO label (logic_type,seq,sn,device,label,label_no,board,componentcode,vendorcode,datacode,lotcode,failurecode) VALUES ('testjet','{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}');
-				'''.format(seq,sn,device,label,label_no,board,componentcode,vendorcode,datacode,lotcode,ErrorCode)))
+				INSERT IGNORE INTO label (logic_type,seq,sn,label,label_no,board,componentcode,vendorcode,datacode,lotcode,failurecode) VALUES ('boundary scan','{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}');
+				'''.format(seq,sn,label,label_no,board,componentcode,vendorcode,datacode,lotcode,ErrorCode)))
 		debugRow = debugRow + 'done\n'
 		debug.append(debugRow)
 
@@ -324,7 +304,7 @@ def Fetch() :
 	#程式執行前先清空舊資料
 	truncate = commonObj.MySqlConn.cursor()
 	truncate.execute(textwrap.dedent('''
-		DELETE FROM label WHERE logic_type = 'testjet'
+		DELETE FROM label WHERE logic_type = 'boundary scan'
 		'''))
 	truncate.close()
 

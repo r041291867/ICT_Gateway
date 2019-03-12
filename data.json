@@ -1,0 +1,60 @@
+{
+	"ErrCode":{
+		"E101": "not NDF", "E102": "not NDF", "E103": "not NDF", "E105": "not NDF", "E106": "not NDF", 
+		"E201": "not NDF", "E202": "not NDF", "E203": "not NDF", "E204": "not NDF", "E205": "not NDF", 
+		"E206": "not NDF", "E208": "not NDF", "E209": "not NDF", "E210": "not NDF", "E211": "not NDF", 
+		"E212": "not NDF", "E213": "not NDF", "E214": "not NDF", "E215": "not NDF", "E216": "not NDF", 
+		"E217": "not NDF", "E218": "not NDF", "E219": "not NDF", "E220": "not NDF", "E221": "not NDF", 
+		"E222": "not NDF", "E223": "not NDF", "E224": "not NDF", "E301": "not NDF", "E302": "not NDF", 
+		"E303": "not NDF", "E304": "not NDF", "E305": "not NDF", "E306": "not NDF", "E307": "not NDF", 
+		"E308": "not NDF", "E309": "not NDF", "E310": "not NDF", "E311": "not NDF", "E312": "not NDF", 
+		"E313": "not NDF", "E314": "not NDF", "E315": "not NDF", "E316": "not NDF", "E317": "not NDF", 
+		"E318": "not NDF", "E319": "not NDF", "E320": "not NDF", "E401": "not NDF", "E402": "not NDF", 
+		"E403": "not NDF", "E405": "not NDF", "E406": "not NDF", "E407": "not NDF", "E408": "not NDF", 
+		"E501": "not NDF", "E502": "not NDF", "E503": "not NDF", "E504": "not NDF", "E505": "not NDF", 
+		"E506": "not NDF", "E507": "not NDF", "E508": "not NDF", "E509": "not NDF", "E510": "not NDF", 
+		"E511": "not NDF", "E512": "not NDF", "E513": "not NDF", "E518": "not NDF", "E702": "not NDF", 
+		"E703": "not NDF", "E704": "not NDF", "E728": "not NDF", "E741": "not NDF", "E742": "not NDF", 
+		"E743": "not NDF", "E903": "not NDF", "E905": "not NDF", "E907": "not NDF", "E744": "not NDF", 
+		"E970": "not NDF", "E971": "not NDF", "E972": "not NDF", "E973": "not NDF", "E974": "not NDF", 
+		"E975": "NDF", "E976": "NDF", "E108": "not NDF", "E107": "not NDF", "E845": "not NDF", 
+		"E011": "NDF", "E977": "NDF", "E514": "not NDF", "E515": "not NDF", "E516": "not NDF", 
+		"E517": "not NDF", "E718": "not NDF", "E519": "not NDF", "E520": "not NDF", "E521": "not NDF", 
+		"E522": "not NDF", "E523": "not NDF", "E601": "not NDF", "E602": "not NDF", "E603": "not NDF", 
+		"E604": "not NDF", "E701": "not NDF", "E045": "not NDF", "E705": "not NDF", "E706": "not NDF", 
+		"E707": "not NDF", "E708": "not NDF", "E709": "not NDF", "E710": "not NDF", "E711": "not NDF", 
+		"E712": "not NDF", "E714": "not NDF", "E715": "not NDF", "E716": "not NDF", "E717": "not NDF", 
+		"E719": "not NDF", "E720": "not NDF", "E721": "not NDF", "E722": "not NDF", "E723": "not NDF", 
+		"E725": "not NDF", "E726": "not NDF", "E729": "not NDF", "E730": "not NDF", "E731": "not NDF", 
+		"E732": "not NDF", "E733": "not NDF", "E734": "not NDF", "E738": "not NDF", "E739": "not NDF", 
+		"E740": "not NDF", "E801": "not NDF", "E806": "NDF", "E807": "NDF", "E808": "NDF", 
+		"E809": "NDF", "E810": "NDF", "E812": "NDF", "E813": "NDF", "E814": "NDF", 
+		"E819": "not NDF", "E820": "not NDF", "E822": "not NDF", "E824": "not NDF", "E825": "not NDF", 
+		"E836": "not NDF", "E837": "not NDF", "E840": "not NDF", "E841": "not NDF", "E901": "not NDF", 
+		"E981": "not NDF", "E982": "not NDF", "E904": "not NDF", "E983": "not NDF", "E906": "NDF", 
+		"E984": "not NDF", "E908": "not NDF", "E909": "not NDF", "E910": "not NDF", "E911": "not NDF", 
+		"E912": "not NDF", "E913": "not NDF", "E914": "not NDF", "E985": "not NDF", "E916": "not NDF", 
+		"E917": "not NDF", "E918": "not NDF", "E919": "not NDF", "E986": "not NDF", "E987": "NDF",
+		"E915": "not NDF"
+	},
+	"high_tolerance":{
+		"A-RES":{
+			"10":1.65,"20":1.5,"35":1.4,"300":1.3,"1000":1.25,"10000":1.25,
+			"50000":1.25,"100000":1.25,"1000000":1.3,"1000001":1.3
+		},
+		"A-CAP":{
+			"33":1,"200":1.5,"1000":1.35,"2000":1.35,"15900000":1.35,"10000000000":1.35,"10000000001":1.5
+		},
+		"f":1.05
+	},
+	"low_tolerance":{
+		"A-RES":{
+			"10":1.65,"20":0.8,"35":0.8,"300":0.8,"1000":0.8,"10000":0.8,
+			"50000":0.75,"100000":0.75,"1000000":0.7,"1000001":0.7
+		},
+		"A-CAP":{
+			"33":1,"200":0.5,"1000":0.65,"2000":0.6,"15900000":0.6,"10000000000":0.6,"10000000001":0.5
+		},
+		"f":0.95
+	}
+}

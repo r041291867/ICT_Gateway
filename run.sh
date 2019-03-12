@@ -1,17 +1,17 @@
 Env=$1
 
-python ./PowerCheck.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./PowerCheck.py ${Env}
 
-python ./BoundaryScan.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./BoundaryScan.py ${Env}
 
-python ./Short.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./Short.py ${Env}
 
-python ./Open.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./Open.py ${Env}
 
-python ./Testjet.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./Testjet.py ${Env}
 
-python ./AnalogPowered.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./AnalogPowered.py ${Env}
 
-python ./Analog.py ${Env}
+/Users/gomez/anaconda3/bin/python3 ./Analog.py ${Env}
 
 
