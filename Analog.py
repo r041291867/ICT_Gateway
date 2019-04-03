@@ -16,6 +16,7 @@ import numpy as np
 import traceback
 from decimal import * 
 import json
+from common import Common
 
 getcontext().prec = 13
 
@@ -145,22 +146,24 @@ def Fetch() :
 	now = datetime.datetime.now()		 	#獲取當前時間
 	day1 = datetime.timedelta(days=1) 	#只計算前一天的資料
 	day90 = datetime.timedelta(days=90) 	#90天前的紀錄不予理會
-	today = now.strftime("%Y-%m-%d") + " 00:00:00"		#轉字串
+	today_begin = now.strftime("%Y-%m-%d") + " 00:00:00"
+	today = now.strftime("%Y-%m-%d") + " 23:59:59"		#轉字串
 	today_90 = (now-day90).strftime("%Y-%m-%d") + " 00:00:00"  #計算90天前的時間
-	dateTmp01 = '2019-01-01 00:00:00'
-	dateTmp02 = '2019-03-05 00:00:00'
+	dateTmp01 = '2019-03-10 00:00:00'
+	dateTmp02 = '2019-03-17 00:00:00'
 	yesterday = (now - day1).strftime("%Y-%m-%d") + " 00:00:00"
 	tomorrow = (now + day1).strftime("%Y-%m-%d") + " 00:00:00"
 
-	StartTime = dateTmp01
-	EndTime = dateTmp02
+	StartTime = today_begin
+	EndTime = today
 	CPK_90day = (datetime.datetime.strptime(EndTime, '%Y-%m-%d %H:%M:%S')-day90).strftime("%Y-%m-%d") + " 00:00:00"
 
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料(測試步驟Fail)
 	FulearnCur.execute(textwrap.dedent('''
-		SELECT machine,sn,block_status,component,test_type,`status`,test_condition,end_time,seq,board
-		FROM analog_result WHERE `status` = 1  AND end_time BETWEEN '{0}' AND '{1}'
+		SELECT a.machine,a.sn,a.block_status,a.component,a.test_type,a.`status`,a.test_condition,a.end_time,a.seq,a.board,b.BU
+		FROM analog_result a LEFT JOIN board_info b ON a.board = b.board
+		WHERE `status` = 1  AND end_time BETWEEN '{0}' AND '{1}'
 		GROUP BY `sn`,`component`,`test_type`,test_condition 
 		ORDER BY `end_time` ASC,`seq` ASC
 		'''.format(StartTime,EndTime)))
@@ -183,6 +186,7 @@ def Fetch() :
 		end_time = row[7]
 		seq = row[8]
 		board = row[9]
+		BU = row[10]
 		sfc_repair = 0
 		label = '？？？'
 		label_no = 999			#label編號: 0-無維修紀錄 1-零件或製程問題 2-程式不穩定 3-探針或接觸問題 4-零件與維修記錄無法匹配 5-找不到重測紀錄 6-wirelist查無資料 7-重測失敗
@@ -197,6 +201,7 @@ def Fetch() :
 		datacode = ''			# DC
 		lotcode = ''			# LC
 		ErrorCode = ''			# Error Code
+		BUname = ''
 		if end_time > (now - day90):
 			debugRow = debugRow + 'in90d '+str(now)+' -> '
 			#查詢SFC是否有fail紀錄
@@ -204,8 +209,15 @@ def Fetch() :
 			success = False
 			while retries < 7 and not success:
 				try:
-					BU = 'UAG'
-					r = requests.get('http://10.157.20.101:8083/Api/fail?sn='+sn+'&BU='+BU)
+					if BU == 'MFGI': BUname = 'UAG'
+					elif BU == 'MFGII': BUname = 'SRG'
+					elif BU == 'MFGIII': BUname = 'UCEBU'
+					elif BU == 'MFGV': BUname = 'ERBU'
+					elif BU == 'MFGVI': BUname = 'WNBU'
+					elif BU == 'MFGVII': BUname = 'SAVBU'
+					elif BU == 'MFGVIII': BUname = 'SFPG'
+					else: BUname = 'UAG'
+					r = requests.get('http://10.157.20.101:8083/Api/fail?sn='+sn+'&BU='+BUname)
 					if r.status_code == requests.codes.ok : success = True
 					SFC_fail = r.json() 
 				except Exception as err:
@@ -231,9 +243,15 @@ def Fetch() :
 				SFC_result = {}
 				while retries < 7 and not success:
 					try:
-						BU = 'UAG'
-						# print('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
-						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BU)
+						if BU == 'MFGI': BUname = 'UAG'
+						elif BU == 'MFGII': BUname = 'SRG'
+						elif BU == 'MFGIII': BUname = 'UCEBU'
+						elif BU == 'MFGV': BUname = 'ERBU'
+						elif BU == 'MFGVI': BUname = 'WNBU'
+						elif BU == 'MFGVII': BUname = 'SAVBU'
+						elif BU == 'MFGVIII': BUname = 'SFPG'
+						else: BUname = 'UAG'
+						r = requests.get('http://10.157.20.101:8083/Api/repair?sn='+sn+'&BU='+BUname)
 						if r.status_code == requests.codes.ok : success = True
 						SFC_result = r.json() 
 					except Exception as err:
@@ -491,8 +509,10 @@ def Fetch() :
 				findRetest.close()
 			#寫入資料表
 			SqlList.append(textwrap.dedent('''
-				INSERT IGNORE INTO label (logic_type,seq,sn,component,test_type,test_condition,label,label_no,board,componentcode,vendorcode,datacode,lotcode,failurecode) VALUES ('analog','{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}');
-				'''.format(seq,sn,component,test_type,test_condition,label,label_no,board,componentcode,vendorcode,datacode,lotcode,ErrorCode)))
+				INSERT IGNORE INTO label (logic_type,seq,sn,component,test_type,test_condition,label,label_no,board,componentcode,vendorcode,datacode,lotcode,failurecode,end_time) 
+				VALUES ('analog','{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')
+				ON DUPLICATE KEY UPDATE label = '{5}',label_no = '{6}';
+				'''.format(seq,sn,component,test_type,test_condition,label,label_no,board,componentcode,vendorcode,datacode,lotcode,ErrorCode,end_time)))
 		debugRow = debugRow + 'done\n'
 		debug.append(debugRow)
 	with open('./Seqence_analog.txt' ,'wb') as fo:
@@ -612,11 +632,11 @@ def Fetch() :
 		f.write(bytearray(''.join(SqlList),"utf-8"))
 		f.close()
 	#程式執行前先清空舊資料
-	truncate = commonObj.MySqlConn.cursor()
-	truncate.execute(textwrap.dedent('''
-		DELETE FROM label WHERE logic_type = 'analog'
-		'''))
-	truncate.close()
+	# truncate = commonObj.MySqlConn.cursor()
+	# truncate.execute(textwrap.dedent('''
+	# 	DELETE FROM label WHERE logic_type = 'analog'
+	# 	'''))
+	# truncate.close()
 
 	Cur = commonObj.MySqlConn.cursor()
 	for update in SqlList:
