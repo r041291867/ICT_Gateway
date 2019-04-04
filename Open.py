@@ -79,8 +79,8 @@ def Fetch() :
 	FulearnCur = commonObj.MySqlConn.cursor()
 	#抓取fail資料(測試步驟Fail)
 	FulearnCur.execute(textwrap.dedent('''
-		SELECT a.machine,a.sn,a.fail_type,a.end_time,a.seq,a.board,b.BU FROM open_short_fail a
-		LEFT JOIN board_info b ON a.board = b.board
+		SELECT a.machine,a.sn,a.fail_type,a.end_time,a.seq,a.board,b.mfg FROM open_short_fail a
+		LEFT JOIN tb_fixture b ON a.board = b.pn
 		WHERE end_time BETWEEN '{0}' AND '{1}' AND fail_type = 'Open' 
 		GROUP BY `sn`,end_time ORDER BY `end_time` ASC
 		'''.format(StartTime,EndTime)))
